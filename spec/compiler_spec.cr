@@ -59,13 +59,6 @@ module PlaceOS::Drivers
       File.delete(result[:executable])
     end
 
-    with_server do
-      it "should compile a private driver using the build API" do
-        result = curl("POST", "/build?repository=private_drivers&driver=drivers/place/private_helper.cr")
-        result.status_code.should eq(201)
-      end
-    end
-
     it "should compile a private spec" do
       # Clone the private driver repo
       PlaceOS::Drivers::Compiler.clone_and_install("private_drivers", "https://github.com/placeos/private-drivers.git")

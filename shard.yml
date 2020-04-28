@@ -1,16 +1,7 @@
-name: drivers
-version: 1.2.0
-
-# compile target
-targets:
-  test-harness:
-    main: src/app.cr
+name: compiler
+version: 1.0.0
 
 dependencies:
-  action-controller:
-    github: spider-gazelle/action-controller
-    version: ~> 3.0
-
   driver:
     github: placeos/driver
     version: ~> 1.2
@@ -20,9 +11,3 @@ dependencies:
 
   rwlock:
     github: spider-gazelle/readers-writer
-
-  telnet:
-    github: spider-gazelle/telnet.cr
-
-  jwt:
-    github: crystal-community/jwt
