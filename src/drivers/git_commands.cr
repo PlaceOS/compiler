@@ -150,7 +150,7 @@ module PlaceOS::Drivers
       }
     end
 
-    def self.clone(repository, repository_uri, username = nil, password = nil, working_dir = Compiler.repository_dir)
+    def self.clone(repository, repository_uri, username = nil, password = nil, working_dir = Compiler.repository_dir, depth : Int32? = nil)
       working_dir = File.expand_path(working_dir)
       repo_dir = File.expand_path(File.join(working_dir, repository))
 
@@ -182,8 +182,11 @@ module PlaceOS::Drivers
           # Ensure the cloned into directory does not exist
           ExecFrom.exec_from(working_dir, "rm", {"-rf", repository}) if Dir.exists?(repository_path)
 
+          args = ["clone", repository_uri, repository]
+          args.insert(1, "--depth=#{depth}") unless depth.nil?
+
           # Clone the repository
-          result = ExecFrom.exec_from(working_dir, "git", {"clone", repository_uri, repository}, environment: {"GIT_TERMINAL_PROMPT" => "0"})
+          result = ExecFrom.exec_from(working_dir, "git", args, environment: {"GIT_TERMINAL_PROMPT" => "0"})
 
           {
             exit_status: result[:exit_code],
