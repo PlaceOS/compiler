@@ -1,5 +1,9 @@
 version: 1.0
 shards:
+  action-controller:
+    github: spider-gazelle/action-controller
+    version: 3.1.0
+
   bisect:
     github: spider-gazelle/bisect
     version: 1.2.0
@@ -16,9 +20,13 @@ shards:
     github: Sija/debug.cr
     version: 1.1.0
 
+  delimiter_tree:
+    github: drujensen/delimiter_tree
+    version: 0.1.4
+
   driver:
     github: placeos/driver
-    version: 1.2.0
+    version: 2.0.1
 
   etcd:
     github: place-labs/crystal-etcd
@@ -27,6 +35,10 @@ shards:
   exec_from:
     github: place-labs/exec_from
     version: 1.2.0
+
+  future:
+    github: crystal-community/future.cr
+    version: 0.1.0
 
   habitat:
     github: luckyframework/habitat
@@ -86,7 +98,7 @@ shards:
 
   tasker:
     github: spider-gazelle/tasker
-    version: 1.2.2
+    version: 1.3.0
 
   tokenizer:
     github: spider-gazelle/tokenizer
