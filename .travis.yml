@@ -1,0 +1,19 @@
+dist: xenial
+language: crystal
+
+env:
+  - SG_ENV=production
+
+before_install:
+  # Configure git
+  - git config --global user.name "PlaceOS"
+  - git config --global user.email support@place.tech
+
+install:
+  - shards install
+
+script:
+  # Specs
+  - crystal spec --error-trace -v
+  # Formatter
+  - crystal tool format --check
