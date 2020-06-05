@@ -5,7 +5,10 @@ module PlaceOS::Drivers
   describe Compiler do
     it "should compile a driver" do
       # Test the executable is created
-      result = PlaceOS::Drivers::Compiler.build_driver("drivers/place/spec_helper.cr")
+      result = PlaceOS::Drivers::Compiler.build_driver(
+        "drivers/place/private_helper.cr",
+        repository_drivers: File.join(PlaceOS::Drivers::Compiler.repository_dir, "private_drivers")
+      )
       result[:exit_status].should eq(0)
       File.exists?(result[:executable]).should be_true
 
@@ -20,10 +23,10 @@ module PlaceOS::Drivers
     end
 
     it "should list compiled versions" do
-      files = PlaceOS::Drivers::Compiler.compiled_drivers("drivers/place/spec_helper.cr")
+      files = PlaceOS::Drivers::Compiler.compiled_drivers("drivers/place/private_helper.cr")
 
-      files.size.should eq Dir.children(Compiler.bin_dir).count { |f| !f.includes?('.') && f.starts_with?("drivers_place_spec_helper") }
-      files.first.should start_with("drivers_place_spec_helper")
+      files.size.should eq Dir.children(Compiler.bin_dir).count { |f| !f.includes?('.') && f.starts_with?("drivers_place_private_helper") }
+      files.first.should start_with("drivers_place_private_helper")
     end
 
     it "should clone and install a repository" do
