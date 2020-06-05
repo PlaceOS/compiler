@@ -1,4 +1,5 @@
 require "spec"
+require "file_utils"
 
 require "../src/drivers"
 
@@ -8,4 +9,8 @@ Spec.before_suite do
     "private_drivers",
     "https://github.com/placeos/private-drivers"
   )
+end
+
+Spec.after_suite do
+  FileUtils.rm_rf("./repositories") if ENV["TRAVIS_TEST"]?
 end
