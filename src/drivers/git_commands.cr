@@ -126,7 +126,7 @@ module PlaceOS::Drivers
       raise CommandFailure.new(exit_code, "git checkout failed with #{exit_code} in path #{repository_directory}: #{result[:output]}") if exit_code != 0
     end
 
-    def self.pull(repository, working_dir = Compiler.repository_dir)
+    def self.pull(repository, working_dir = Compiler.repository_dir, branch : String = "master")
       working_dir = File.expand_path(working_dir)
       repo_dir = File.expand_path(repository, working_dir)
 
@@ -141,7 +141,7 @@ module PlaceOS::Drivers
       # The call to write here ensures that no other operations are occuring on
       # the repository at this time.
       result = repo_operation(repo_dir) do
-        ExecFrom.exec_from(repo_dir, "git", {"pull"}, environment: {"GIT_TERMINAL_PROMPT" => "0"})
+        ExecFrom.exec_from(repo_dir, "git", {"pull", "origin", branch}, environment: {"GIT_TERMINAL_PROMPT" => "0"})
       end
 
       {
@@ -150,7 +150,7 @@ module PlaceOS::Drivers
       }
     end
 
-    def self.clone(repository, repository_uri, username = nil, password = nil, working_dir = Compiler.repository_dir, depth : Int32? = nil)
+    def self.clone(repository, repository_uri, username = nil, password = nil, working_dir = Compiler.repository_dir, depth : Int32? = nil, branch : String? = nil)
       working_dir = File.expand_path(working_dir)
       repo_dir = File.expand_path(File.join(working_dir, repository))
 
@@ -184,6 +184,7 @@ module PlaceOS::Drivers
 
           args = ["clone", repository_uri, repository]
           args.insert(1, "--depth=#{depth}") unless depth.nil?
+          args.insert(1, "--branch=#{branch}") unless branch.nil?
 
           # Clone the repository
           result = ExecFrom.exec_from(working_dir, "git", args, environment: {"GIT_TERMINAL_PROMPT" => "0"})
