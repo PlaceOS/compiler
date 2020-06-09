@@ -2,7 +2,7 @@ dist: xenial
 language: crystal
 
 env:
-  - SG_ENV=production TRAVIS_TEST=true
+  - SG_ENV=production
 
 before_install:
   # Configure git
