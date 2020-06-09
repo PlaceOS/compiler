@@ -12,5 +12,5 @@ Spec.before_suite do
 end
 
 Spec.after_suite do
-  FileUtils.rm_rf("./repositories") if ENV["TRAVIS_TEST"]?
+  FileUtils.rm_rf("./repositories") if ENV["TRAVIS"]?
 end
