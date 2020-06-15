@@ -7,7 +7,8 @@ module PlaceOS::Drivers
       # Test the executable is created
       result = PlaceOS::Drivers::Compiler.build_driver(
         "drivers/place/private_helper.cr",
-        repository_drivers: File.join(PlaceOS::Drivers::Compiler.repository_dir, "private_drivers")
+        repository_drivers: File.join(PlaceOS::Drivers::Compiler.repository_dir, "private_drivers"),
+        commit: SPEC_COMMIT
       )
       result[:exit_status].should eq(0)
       File.exists?(result[:executable]).should be_true
@@ -43,7 +44,8 @@ module PlaceOS::Drivers
       # Test the executable is created
       result = PlaceOS::Drivers::Compiler.build_driver(
         "drivers/place/private_helper.cr",
-        repository_drivers: File.join(PlaceOS::Drivers::Compiler.repository_dir, "private_drivers")
+        repository_drivers: File.join(PlaceOS::Drivers::Compiler.repository_dir, "private_drivers"),
+        commit: SPEC_COMMIT
       )
 
       result[:exit_status].should eq(0)
@@ -70,7 +72,8 @@ module PlaceOS::Drivers
       result = PlaceOS::Drivers::Compiler.build_driver(
         "drivers/place/private_helper_spec.cr",
         repository_drivers: repository_path,
-        git_checkout: false
+        git_checkout: false,
+        commit: SPEC_COMMIT
       )
 
       spec_executable = result[:executable]
@@ -80,7 +83,8 @@ module PlaceOS::Drivers
       result = PlaceOS::Drivers::Compiler.build_driver(
         "drivers/place/private_helper.cr",
         repository_drivers: repository_path,
-        git_checkout: false
+        git_checkout: false,
+        commit: SPEC_COMMIT
       )
 
       # Ensure the driver we want to test exists

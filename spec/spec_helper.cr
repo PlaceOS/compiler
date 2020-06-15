@@ -3,6 +3,8 @@ require "file_utils"
 
 require "../src/drivers"
 
+SPEC_COMMIT = "c7c35b1"
+
 Spec.before_suite do
   # Clone the private drivers
   PlaceOS::Drivers::Compiler.clone_and_install(
