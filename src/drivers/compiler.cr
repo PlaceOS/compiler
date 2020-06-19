@@ -115,7 +115,7 @@ module PlaceOS::Drivers
     end
 
     def self.repositories(working_dir : String = @@repository_dir)
-      Dir.children(working_dir).reject { |file| File.file?(file) }
+      Dir.children(working_dir).reject { |file| File.file?(file) || file.starts_with?('.') }
     end
 
     # Runs shards install to ensure driver builds will succeed
