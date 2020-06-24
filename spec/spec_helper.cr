@@ -3,7 +3,7 @@ require "file_utils"
 
 require "../src/drivers"
 
-SPEC_COMMIT = "c7c35b1"
+SPEC_COMMIT = ENV["COMPILER_SPEC_COMMIT"]? || "HEAD"
 
 Spec.before_suite do
   # Clone the private drivers
