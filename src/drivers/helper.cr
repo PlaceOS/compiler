@@ -16,7 +16,12 @@ module PlaceOS::Drivers
     def drivers(repository_directory : String? = nil) : Array(String)
       Dir.cd(get_repository_path(repository_directory)) do
         Dir.glob("drivers/**/*.cr").select do |file|
-          !file.ends_with?("_spec.cr")
+          # Must not be a spec and there must be a class that includes `placeos-driver` directly
+          !file.ends_with?("_spec.cr") && File.open(file) do |f|
+            f.each_line.any? &.includes?("PlaceOS::Driver")
+          rescue
+            false
+          end
         end
       end
     end
