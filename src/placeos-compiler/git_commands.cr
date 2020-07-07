@@ -5,8 +5,8 @@ require "uri"
 require "./command_failure"
 require "./compiler"
 
-module PlaceOS::Drivers
-  class GitCommands
+module PlaceOS::Compiler
+  module GitCommands
     # Will really only be an issue once threads come along
     @@lock_manager = Mutex.new
 

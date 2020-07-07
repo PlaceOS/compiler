@@ -2,7 +2,7 @@ require "./command_failure"
 require "./compiler"
 require "./git_commands"
 
-module PlaceOS::Drivers
+module PlaceOS::Compiler
   module Helper
     extend self
 

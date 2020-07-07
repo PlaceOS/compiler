@@ -1,6 +1,6 @@
 require "./spec_helper"
 
-module PlaceOS::Drivers
+module PlaceOS::Compiler
   describe Helper do
     it "should list drivers" do
       drivers = Helper.drivers("private_drivers")
@@ -12,6 +12,8 @@ module PlaceOS::Drivers
       commits = Helper.commits("drivers/place/private_helper.cr", "private_drivers")
       commit = commits[0][:commit]
       result = Helper.compile_driver("drivers/place/private_helper.cr", "private_drivers", commit)
+      pp! result if result[:exit_status] != 0
+
       result[:exit_status].should eq(0)
       result[:executable].ends_with?("/drivers_place_private_helper_#{commit}").should be_true
     end
