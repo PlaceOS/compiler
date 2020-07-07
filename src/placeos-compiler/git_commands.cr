@@ -150,7 +150,7 @@ module PlaceOS::Compiler
       }
     end
 
-    def self.clone(repository, repository_uri, username = nil, password = nil, working_dir = Compiler.repository_dir, depth : Int32? = nil, branch : String? = nil)
+    def self.clone(repository, repository_uri, username = nil, password = nil, working_dir = Compiler.repository_dir, depth : Int32? = nil, branch : String = "master")
       working_dir = File.expand_path(working_dir)
       repo_dir = File.expand_path(File.join(working_dir, repository))
 

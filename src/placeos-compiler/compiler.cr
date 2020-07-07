@@ -152,16 +152,29 @@ module PlaceOS::Compiler
     repository_uri : String,
     username : String? = nil,
     password : String? = nil,
+    branch : String = "master",
     working_dir : String = @@repository_dir,
     pull_if_exists : Bool = true
   )
     GitCommands.repo_lock(repository).write do
-      clone_result = GitCommands.clone(repository, repository_uri, username, password, working_dir)
+      clone_result = GitCommands.clone(
+        repository: repository,
+        repository_uri: repository_uri,
+        username: username,
+        password: password,
+        working_dir: working_dir,
+        branch: branch,
+      )
+
       raise "failed to clone\n#{clone_result[:output]}" unless clone_result[:exit_status] == 0
 
       # Pull if already cloned and pull intended
       if clone_result[:output].includes?("already exists") && pull_if_exists
-        pull_result = GitCommands.pull(repository, working_dir)
+        pull_result = GitCommands.pull(
+          repository: repository,
+          working_dir: working_dir,
+          branch: branch,
+        )
         raise "failed to pull\n#{pull_result}" unless pull_result[:exit_status] == 0
       end
 

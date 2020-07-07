@@ -39,6 +39,13 @@ module PlaceOS
       File.directory?(File.expand_path("./repositories/rwlock/bin")).should be_true
     end
 
+    it "should clone and install a repository branch" do
+      Compiler.clone_and_install("ulid", "https://github.com/place-labs/ulid", branch: "test")
+      File.file?(File.expand_path("./repositories/ulid/shard.yml")).should be_true
+      File.directory?(File.expand_path("./repositories/ulid/src")).should be_true
+      Compiler::GitCommands.current_branch(File.expand_path("./repositories/ulid")).should eq "test"
+    end
+
     it "should compile a private driver" do
       # Clone the private driver repo
       Compiler.clone_and_install("private_drivers", "https://github.com/placeos/private-drivers.git")
