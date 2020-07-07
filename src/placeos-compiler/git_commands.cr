@@ -199,17 +199,16 @@ module PlaceOS::Compiler
 
     # https://stackoverflow.com/questions/6245570/how-to-get-the-current-branch-name-in-git
     def self.current_branch(repository)
-      io = IO::Memory.new
-      exit_status = basic_operation(repository) do
-        Process.run(
-          "./bin/exec_from", {repository, "git", "rev-parse", "--abbrev-ref", "HEAD"},
-          input: Process::Redirect::Close,
-          output: io,
-          error: io,
-        ).exit_code
+      result = repo_operation(repository) do
+        ExecFrom.exec_from(repository, "git", {"rev-parse", "--abbrev-ref", "HEAD"})
       end
-      raise CommandFailure.new(exit_status, "git rev-parse failed with #{exit_status} in path #{repository}: #{io}") if exit_status != 0
-      io.to_s.strip
+
+      exit_code = result[:exit_code]
+      output = result[:output].to_s.strip
+
+      raise CommandFailure.new(exit_code, "git rev-parse failed with #{exit_code} in path #{repository}: #{output}") if exit_code != 0
+
+      output
     end
 
     # Use this for simple git operations, such as `git ls`
