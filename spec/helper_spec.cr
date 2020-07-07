@@ -1,6 +1,6 @@
 require "./spec_helper"
 
-module PlaceOS::Drivers
+module PlaceOS::Compiler
   describe Helper do
     it "should list drivers" do
       drivers = Helper.drivers("private_drivers")

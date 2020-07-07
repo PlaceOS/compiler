@@ -1,4 +1,4 @@
-module PlaceOS::Drivers
+module PlaceOS::Compiler
   class CommandFailure < Exception
     def initialize(@error_code = 1, message = nil)
       msg = message || "git exited with code: #{@error_code}"
