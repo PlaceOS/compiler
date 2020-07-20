@@ -96,6 +96,7 @@ module PlaceOS::Compiler
       environment: {
         "COMPILE_DRIVER" => source_file,
         "DEBUG"          => debug ? "1" : "0",
+        "CRYSTAL_PATH"   => ENV["CRYSTAL_PATH"]?,
       })
   end
 
