@@ -126,6 +126,33 @@ module PlaceOS::Compiler
       raise CommandFailure.new(exit_code, "git checkout failed with #{exit_code} in path #{repository_directory}: #{result[:output]}") if exit_code != 0
     end
 
+    def self.checkout_branch(branch : String, repository : String = Compiler.drivers_dir)
+      result = repo_operation(repository) do
+        ExecFrom.exec_from(repository, "git", {"checkout", branch}, environment: {"GIT_TERMINAL_PROMPT" => "0"})
+      end
+
+      exit_code = result[:exit_code]
+      output = result[:output]
+
+      raise CommandFailure.new(exit_code, "git checkout failed with #{exit_code} in path #{repository}: #{output}") if exit_code != 0
+      output.to_s.strip
+    end
+
+    def self.fetch(repository : String, remote : String? = nil)
+      base_arguments = {"fetch", "-a"}
+      arguments = remote.nil? ? base_arguments : base_arguments + {remote}
+
+      result = operation_lock(repository).synchronize do
+        ExecFrom.exec_from(repository, "git", arguments, environment: {"GIT_TERMINAL_PROMPT" => "0"})
+      end
+
+      exit_code = result[:exit_code]
+      output = result[:output]
+
+      raise CommandFailure.new(exit_code, "git fetch failed with #{exit_code} in path #{repository}: #{output}") if exit_code != 0
+      output.to_s.strip
+    end
+
     def self.pull(repository, working_dir = Compiler.repository_dir, branch : String = "master")
       working_dir = File.expand_path(working_dir)
       repo_dir = File.expand_path(repository, working_dir)
@@ -199,17 +226,15 @@ module PlaceOS::Compiler
 
     # https://stackoverflow.com/questions/6245570/how-to-get-the-current-branch-name-in-git
     def self.current_branch(repository)
-      io = IO::Memory.new
-      exit_status = basic_operation(repository) do
-        Process.run(
-          "./bin/exec_from", {repository, "git", "rev-parse", "--abbrev-ref", "HEAD"},
-          input: Process::Redirect::Close,
-          output: io,
-          error: io,
-        ).exit_code
+      result = basic_operation(repository) do
+        ExecFrom.exec_from(repository, "git", {"rev-parse", "--abbrev-ref", "HEAD"})
       end
-      raise CommandFailure.new(exit_status, "git rev-parse failed with #{exit_status} in path #{repository}: #{io}") if exit_status != 0
-      io.to_s.strip
+
+      output = result[:output]
+      exit_code = result[:exit_code]
+
+      raise CommandFailure.new(exit_code, "git rev-parse failed with #{exit_code} in path #{repository}: #{output}") if exit_code != 0
+      output.to_s.strip
     end
 
     # Use this for simple git operations, such as `git ls`
