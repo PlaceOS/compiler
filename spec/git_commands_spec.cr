@@ -9,7 +9,7 @@ module PlaceOS::Compiler
     old_title = "# Private Engine Drivers\n"
 
     it "should list files in the repository" do
-      files = GitCommands.ls
+      files = GitCommands.ls(private_drivers)
       (files.size > 0).should be_true
       files.includes?("shard.yml").should be_true
     end

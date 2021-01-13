@@ -1,5 +1,4 @@
 doc
-shard.lock
 lib
 .crystal
 .shards
@@ -9,3 +8,4 @@ repositories/*
 bin
 .DS_Store
 *.rdb
+shard.lock

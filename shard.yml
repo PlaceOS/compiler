@@ -1,5 +1,5 @@
 name: placeos-compiler
-version: 3.1.0
+version: 3.2.0
 
 dependencies:
   placeos-driver:
@@ -12,3 +12,7 @@ dependencies:
 
   rwlock:
     github: spider-gazelle/readers-writer
+
+development_dependencies:
+  ameba:
+    github: crystal-ameba/ameba
