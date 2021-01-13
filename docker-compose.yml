@@ -1,0 +1,35 @@
+version: "3.7"
+
+# YAML Anchors
+
+x-deployment-env: &deployment-env
+  ENV: ${ENV:-development}
+  SG_ENV: ${SG_ENV:-development}
+  TZ: $TZ
+
+x-redis-client-env: &redis-client-env
+  REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+
+
+services:
+  compiler:
+    build:
+      context: ./
+      dockerfile: Dockerfile.${MODE:-spec}
+    container_name: compiler
+    hostname: compiler
+    depends_on:
+      - redis
+    environment:
+      # Service Hosts
+      << : *redis-client-env
+      # Environment
+      << : *deployment-env
+
+  redis:
+    image: eqalpha/keydb
+    restart: always
+    container_name: redis
+    hostname: redis
+    environment:
+      TZ: $TZ
