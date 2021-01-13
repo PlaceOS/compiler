@@ -3,7 +3,6 @@ services:
 
 env:
   - SG_ENV=production
-  - MODE=spec
 
 before_install:
   # Configure git
@@ -11,4 +10,5 @@ before_install:
   - git config --global user.email support@place.tech
 
 script:
-  - docker-compose run --rm compiler
+  - ./test
+  - ./test --multithreaded

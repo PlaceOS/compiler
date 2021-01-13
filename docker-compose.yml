@@ -10,12 +10,10 @@ x-deployment-env: &deployment-env
 x-redis-client-env: &redis-client-env
   REDIS_URL: ${REDIS_URL:-redis://redis:6379}
 
-
 services:
   compiler:
     build:
       context: ./
-      dockerfile: Dockerfile.${MODE:-spec}
     container_name: compiler
     hostname: compiler
     depends_on:
