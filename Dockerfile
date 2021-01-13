@@ -19,11 +19,11 @@ COPY shard.yml /app
 
 RUN shards install
 
-COPY entrypoint.sh /app/entrypoint.sh
+COPY scripts /app/scripts
 COPY spec /app/spec
 COPY src /app/src
 
 # These provide certificate chain validation where communicating with external services over TLS
 ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 
-ENTRYPOINT /app/entrypoint.sh
+CMD /app/scripts/entrypoint.sh

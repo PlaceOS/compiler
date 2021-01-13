@@ -16,6 +16,6 @@ trap "trap_ctrlc" 2
 
 docker-compose build
 
-docker-compose run --rm compiler /app/entrypoint $@
+docker-compose run --rm compiler /app/scripts/entrypoint.sh "$@"
 
 docker-compose down

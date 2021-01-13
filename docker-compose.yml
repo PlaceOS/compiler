@@ -14,8 +14,9 @@ services:
   compiler:
     build:
       context: ./
-    container_name: compiler
-    hostname: compiler
+    volumes:
+      - ./spec:/app/spec
+      - ./src:/app/src
     depends_on:
       - redis
     environment:
@@ -27,7 +28,6 @@ services:
   redis:
     image: eqalpha/keydb
     restart: always
-    container_name: redis
     hostname: redis
     environment:
       TZ: $TZ
