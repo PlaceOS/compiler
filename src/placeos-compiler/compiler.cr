@@ -86,7 +86,7 @@ module PlaceOS::Compiler
     source_file : String,
     debug : Bool
   )
-    arguments = ["build", "--no-color", "--error-trace", "-o", executable_path, build_script]
+    arguments = ["build", "--static", "--no-color", "--error-trace", "-o", executable_path, build_script]
     arguments.insert(1, "--debug") if debug
 
     ExecFrom.exec_from(
