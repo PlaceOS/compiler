@@ -24,8 +24,6 @@ COPY entrypoint.sh /app/entrypoint.sh
 COPY spec /app/spec
 COPY src /app/src
 
-RUN crystal tool format --check
-
 # These provide certificate chain validation where communicating with external services over TLS
 ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 
