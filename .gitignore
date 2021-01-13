@@ -8,3 +8,4 @@ repositories/*
 bin
 .DS_Store
 *.rdb
+shard.lock
