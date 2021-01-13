@@ -6,5 +6,5 @@ Collection of PlaceOS Driver compilation tooling.
 
 ## Development
 
-To spec, run:
-`./test`
+- `./test` to run spec suite
+- `./test --watch` to run spec suite on file changes

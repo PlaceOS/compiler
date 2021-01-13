@@ -16,7 +16,6 @@ RUN apk add --no-cache -X http://dl-cdn.alpinelinux.org/alpine/edge/testing watc
 RUN apk add --no-cache bash
 
 COPY shard.yml /app
-COPY shard.lock /app
 
 RUN shards install
 
