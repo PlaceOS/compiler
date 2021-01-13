@@ -7,4 +7,4 @@ Collection of PlaceOS Driver compilation tooling.
 ## Development
 
 To spec, run:
-`docker-compose run --rm compiler`
+`./test`
