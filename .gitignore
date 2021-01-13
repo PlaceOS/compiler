@@ -1,5 +1,4 @@
 doc
-shard.lock
 lib
 .crystal
 .shards
