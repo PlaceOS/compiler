@@ -36,7 +36,6 @@ module PlaceOS
     it "should clone and install a repository" do
       Compiler.clone_and_install("rwlock", "https://github.com/spider-gazelle/readers-writer")
       File.file?(File.expand_path("./repositories/rwlock/shard.yml")).should be_true
-      File.directory?(File.expand_path("./repositories/rwlock/bin")).should be_true
     end
 
     it "should clone and install a repository branch" do
