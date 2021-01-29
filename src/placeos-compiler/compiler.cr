@@ -128,7 +128,7 @@ module PlaceOS::Compiler
     # operations in a single lock. i.e. clone + shards install
     GitCommands.repo_lock(repo_dir).write do
       # First check if the dependencies are satisfied
-      result = ExecFrom.exec_from(repo_dir, "shards", {"--no-color", "check"})
+      result = ExecFrom.exec_from(repo_dir, "shards", {"--no-color", "check", "--production"})
       check_output = result[:output].to_s
       check_exit_code = result[:exit_code]
 
@@ -139,7 +139,7 @@ module PlaceOS::Compiler
         }
       else
         # Otherwise install shards
-        result = ExecFrom.exec_from(repo_dir, "shards", {"--no-color", "install"})
+        result = ExecFrom.exec_from(repo_dir, "shards", {"--no-color", "install", "--production"})
         {
           exit_status: result[:exit_code],
           output:      result[:output].to_s,
