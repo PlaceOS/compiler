@@ -88,6 +88,7 @@ module PlaceOS
       )
 
       spec_executable = result[:executable]
+
       result[:exit_status].should eq(0)
       File.exists?(spec_executable).should be_true
 
@@ -111,6 +112,7 @@ module PlaceOS
         error: io
       ).exit_code
 
+      puts io.to_s if exit_code != 0
       exit_code.should eq(0)
 
       # Delete the file
