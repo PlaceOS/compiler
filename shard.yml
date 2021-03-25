@@ -1,5 +1,6 @@
 name: placeos-compiler
-version: 3.3.2
+version: 3.4.0
+crystal: ~> 1
 
 dependencies:
   placeos-driver:
@@ -16,3 +17,5 @@ dependencies:
 development_dependencies:
   ameba:
     github: crystal-ameba/ameba
+  placeos-log-backend:
+    github: place-labs/log-backend

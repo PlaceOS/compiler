@@ -1,3 +1,6 @@
+require "placeos-log-backend"
+::Log.setup("*", backend: PlaceOS::LogBackend.log_backend, level: Log::Severity::Debug)
+
 require "spec"
 require "file_utils"
 

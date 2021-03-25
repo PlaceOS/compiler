@@ -1,4 +1,4 @@
-FROM crystallang/crystal:0.35.1-alpine
+FROM crystallang/crystal:1.0.0-alpine
 
 WORKDIR /app
 
@@ -17,7 +17,7 @@ RUN apk add --no-cache bash
 
 COPY shard.yml /app
 
-RUN shards install
+RUN shards install --ignore-crystal-version
 
 COPY scripts /app/scripts
 COPY spec /app/spec
