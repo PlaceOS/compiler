@@ -1,10 +1,10 @@
 name: placeos-compiler
-version: 3.3.2
+version: 3.3.3
 
 dependencies:
   placeos-driver:
     github: placeos/driver
-    version: ~> 5.0
+    version: ">= 3.6"
 
   exec_from:
     github: place-labs/exec_from
