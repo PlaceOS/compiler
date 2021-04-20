@@ -7,6 +7,8 @@ require "./compiler"
 
 module PlaceOS::Compiler
   module GitCommands
+    Log = ::Log.for(self)
+
     # Will really only be an issue once threads come along
     @@lock_manager = Mutex.new
 
@@ -201,6 +203,14 @@ module PlaceOS::Compiler
 
         # Check if there's an existing repo
         if Dir.exists?(File.join(repository_path, ".git"))
+          if (current = current_branch(repository_path)) != branch
+            begin
+              checkout_branch(branch, repository_path)
+            rescue e
+              Log.error(exception: e) { "failed to update cloned repository branch from #{current} to #{branch}" }
+            end
+          end
+
           {
             exit_status: 0,
             output:      "already exists",
@@ -211,7 +221,7 @@ module PlaceOS::Compiler
 
           args = ["clone", repository_uri, repository]
           args.insert(1, "--depth=#{depth}") unless depth.nil?
-          args.insert(1, "--branch=#{branch}") unless branch.nil?
+          args.insert(1, "--branch=#{branch}")
 
           # Clone the repository
           result = ExecFrom.exec_from(working_dir, "git", args, environment: {"GIT_TERMINAL_PROMPT" => "0"})
