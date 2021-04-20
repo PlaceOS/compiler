@@ -132,7 +132,7 @@ module PlaceOS::Compiler
       check_output = result[:output].to_s
       check_exit_code = result[:exit_code]
 
-      if check_exit_code == 0 || check_output.includes?("Dependencies are satisfied")
+      if check_exit_code.zero? || check_output.includes?("Dependencies are satisfied")
         {
           exit_status: check_exit_code,
           output:      check_output,
@@ -167,7 +167,7 @@ module PlaceOS::Compiler
         branch: branch,
       )
 
-      raise "failed to clone\n#{clone_result[:output]}" unless clone_result[:exit_status] == 0
+      raise "failed to clone\n#{clone_result[:output]}" unless clone_result[:exit_status].zero?
 
       # Pull if already cloned and pull intended
       if clone_result[:output].includes?("already exists") && pull_if_exists
@@ -176,11 +176,11 @@ module PlaceOS::Compiler
           working_dir: working_dir,
           branch: branch,
         )
-        raise "failed to pull\n#{pull_result}" unless pull_result[:exit_status] == 0
+        raise "failed to pull\n#{pull_result}" unless pull_result[:exit_status].zero?
       end
 
       install_result = install_shards(repository, working_dir)
-      raise "failed to install shards\n#{install_result[:output]}" unless install_result[:exit_status] == 0
+      raise "failed to install shards\n#{install_result[:output]}" unless install_result[:exit_status].zero?
     end
   end
 
