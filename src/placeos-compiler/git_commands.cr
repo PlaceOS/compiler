@@ -9,6 +9,8 @@ module PlaceOS::Compiler
   module GitCommands
     Log = ::Log.for(self)
 
+    GIT_ENVIRONMENT = {"GIT_TERMINAL_PROMPT" => "0"}
+
     # Will really only be an issue once threads come along
     @@lock_manager = Mutex.new
 
@@ -25,7 +27,7 @@ module PlaceOS::Compiler
 
     def self.ls(repository = Compiler.drivers_dir)
       result = basic_operation(repository) do
-        ExecFrom.exec_from(repository, "git", {"--no-pager", "ls-files"})
+        ExecFrom.exec_from(repository, "git", {"--no-pager", "ls-files"}, environment: GIT_ENVIRONMENT)
       end
 
       output = result[:output].to_s
@@ -44,7 +46,11 @@ module PlaceOS::Compiler
       # %an: author name
       # %s: subject
       result = file_operation(repository, file_name) do
-        ExecFrom.exec_from(repository, "git", {"--no-pager", "log", "--format=format:%h%n%cI%n%an%n%s%n<--%n%n-->", "--no-color", "-n", count.to_s, file_name})
+        ExecFrom.exec_from(
+          repository,
+          "git", {"--no-pager", "log", "--format=format:%h%n%cI%n%an%n%s%n<--%n%n-->", "--no-color", "-n", count.to_s, file_name},
+          environment: GIT_ENVIRONMENT
+        )
       end
 
       output = result[:output].to_s
@@ -66,7 +72,7 @@ module PlaceOS::Compiler
 
     def self.diff(file_name, repository = Compiler.drivers_dir)
       result = file_operation(repository, file_name) do
-        ExecFrom.exec_from(repository, "git", {"--no-pager", "diff", "--no-color", file_name})
+        ExecFrom.exec_from(repository, "git", {"--no-pager", "diff", "--no-color", file_name}, environment: GIT_ENVIRONMENT)
       end
 
       output = result[:output].to_s
@@ -85,7 +91,11 @@ module PlaceOS::Compiler
       # %an: author name
       # %s: subject
       result = repo_lock(repository).write do
-        ExecFrom.exec_from(repository, "git", {"--no-pager", "log", "--format=format:%h%n%cI%n%an%n%s%n<--%n%n-->", "--no-color", "-n", count.to_s})
+        ExecFrom.exec_from(
+          repository,
+          "git", {"--no-pager", "log", "--format=format:%h%n%cI%n%an%n%s%n<--%n%n-->", "--no-color", "-n", count.to_s},
+          environment: GIT_ENVIRONMENT
+        )
       end
 
       output = result[:output].to_s
@@ -121,7 +131,7 @@ module PlaceOS::Compiler
     # Checkout a file relative to a directory
     protected def self._checkout(repository_directory : String, file : String, commit : String)
       result = operation_lock(repository_directory).synchronize do
-        ExecFrom.exec_from(repository_directory, "git", {"checkout", commit, "--", file})
+        ExecFrom.exec_from(repository_directory, "git", {"checkout", commit, "--", file}, environment: GIT_ENVIRONMENT)
       end
 
       exit_code = result[:exit_code]
@@ -130,7 +140,7 @@ module PlaceOS::Compiler
 
     def self.checkout_branch(branch : String, repository : String = Compiler.drivers_dir)
       result = repo_operation(repository) do
-        ExecFrom.exec_from(repository, "git", {"checkout", branch}, environment: {"GIT_TERMINAL_PROMPT" => "0"})
+        ExecFrom.exec_from(repository, "git", {"checkout", branch}, environment: GIT_ENVIRONMENT)
       end
 
       exit_code = result[:exit_code]
@@ -145,7 +155,7 @@ module PlaceOS::Compiler
       arguments = remote.nil? ? base_arguments : base_arguments + {remote}
 
       result = operation_lock(repository).synchronize do
-        ExecFrom.exec_from(repository, "git", arguments, environment: {"GIT_TERMINAL_PROMPT" => "0"})
+        ExecFrom.exec_from(repository, "git", arguments, environment: GIT_ENVIRONMENT)
       end
 
       exit_code = result[:exit_code]
@@ -170,7 +180,7 @@ module PlaceOS::Compiler
       # The call to write here ensures that no other operations are occuring on
       # the repository at this time.
       result = repo_operation(repo_dir) do
-        ExecFrom.exec_from(repo_dir, "git", {"pull", "origin", branch}, environment: {"GIT_TERMINAL_PROMPT" => "0"})
+        ExecFrom.exec_from(repo_dir, "git", {"pull", "origin", branch}, environment: GIT_ENVIRONMENT)
       end
 
       {
@@ -224,7 +234,7 @@ module PlaceOS::Compiler
           args.insert(1, "--branch=#{branch}")
 
           # Clone the repository
-          result = ExecFrom.exec_from(working_dir, "git", args, environment: {"GIT_TERMINAL_PROMPT" => "0"})
+          result = ExecFrom.exec_from(working_dir, "git", args, environment: GIT_ENVIRONMENT)
 
           {
             exit_status: result[:exit_code],
@@ -237,7 +247,7 @@ module PlaceOS::Compiler
     # https://stackoverflow.com/questions/6245570/how-to-get-the-current-branch-name-in-git
     def self.current_branch(repository)
       result = basic_operation(repository) do
-        ExecFrom.exec_from(repository, "git", {"rev-parse", "--abbrev-ref", "HEAD"})
+        ExecFrom.exec_from(repository, "git", {"rev-parse", "--abbrev-ref", "HEAD"}, environment: GIT_ENVIRONMENT)
       end
 
       output = result[:output]
@@ -275,7 +285,7 @@ module PlaceOS::Compiler
       repo_lock(repository).write do
         operation_lock(repository).synchronize do
           # Reset incase of a crash during a file operation
-          result = ExecFrom.exec_from(repository, "git", {"reset", "--hard"})
+          result = ExecFrom.exec_from(repository, "git", {"reset", "--hard"}, environment: GIT_ENVIRONMENT)
 
           exit_code = result[:exit_code]
           raise CommandFailure.new(exit_code, "git reset --hard failed with #{exit_code} in path #{repository}: #{result[:output]}") if exit_code != 0

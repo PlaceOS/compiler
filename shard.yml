@@ -1,5 +1,5 @@
 name: placeos-compiler
-version: 3.5.0
+version: 3.5.1
 crystal: ~> 1
 
 dependencies:
