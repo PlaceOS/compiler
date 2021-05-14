@@ -1,4 +1,5 @@
-FROM crystallang/crystal:1.0.0-alpine
+ARG crystal_version=1.0.0
+FROM crystallang/crystal:${crystal_version}-alpine
 
 WORKDIR /app
 
@@ -6,15 +7,13 @@ WORKDIR /app
 ARG PLACE_COMMIT="DEV"
 
 # Install the latest version of LibSSH2, ping
-RUN apk add --no-cache libssh2 libssh2-dev libssh2-static
-
-# Add trusted CAs for communicating with external services
-RUN apk update && apk add --no-cache ca-certificates tzdata && update-ca-certificates
-
+RUN apk add --no-cache libssh2 libssh2-dev libssh2-static tzdata ca-certificates bash
 RUN apk add --no-cache -X http://dl-cdn.alpinelinux.org/alpine/edge/testing watchexec
 
-RUN apk add --no-cache bash
+# Add trusted CAs for communicating with external services
+RUN update-ca-certificates
 
+COPY shard.yml /app
 COPY shard.yml /app
 
 RUN shards install --ignore-crystal-version

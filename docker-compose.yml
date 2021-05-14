@@ -11,7 +11,7 @@ x-redis-client-env: &redis-client-env
   REDIS_URL: ${REDIS_URL:-redis://redis:6379}
 
 services:
-  compiler:
+  test:
     build:
       context: ./
     volumes:
@@ -23,6 +23,7 @@ services:
       # Service Hosts
       << : *redis-client-env
       # Environment
+      CI: ${CI-}
       << : *deployment-env
 
   redis:

@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+  schedule:
+    - cron: "0 6 * * 1"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        crystal:
+          - latest
+          - nightly
+          - 1.0.0
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build test container
+        run: docker-compose build --build-arg crystal_version=${{ matrix.crystal }} test
+      - name: Suite
+        run: ./test
+  style:
+    runs-on: ubuntu-latest
+    container:
+      image: crystallang/crystal
+    strategy:
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v2
+      - name: Format
+        run: crystal tool format --check
+      - name: Lint
+        uses: crystal-ameba/github-action@v0.2.12
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
