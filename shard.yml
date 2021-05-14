@@ -9,7 +9,6 @@ dependencies:
 
   exec_from:
     github: place-labs/exec_from
-    branch: refactor/remove-named-tuples
     version: ~> 2.0
 
   rwlock:
