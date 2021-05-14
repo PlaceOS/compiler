@@ -4,40 +4,27 @@ require "uri"
 
 require "./command_failure"
 require "./compiler"
+require "./result"
 
 module PlaceOS::Compiler
-  module GitCommands
+  module Git
     Log = ::Log.for(self)
 
-    # Will really only be an issue once threads come along
-    @@lock_manager = Mutex.new
-
-    # Allow multiple file level operations to occur in parrallel
-    # File level operations are readers, repo level are writers
-    @@repository_lock = {} of String => RWLock
-
-    # Ensure only a single git operation is occuring at once to avoid corruption
-    @@operation_lock = {} of String => Mutex
-
-    # Ensures only a single operation on an individual file occurs at once
-    # This enables multi-version compilation to occur without clashing
-    @@file_lock = {} of String => Hash(String, Mutex)
-
-    def self.ls(repository = Compiler.drivers_dir)
+    def self.ls(repository : String)
       result = basic_operation(repository) do
         ExecFrom.exec_from(repository, "git", {"--no-pager", "ls-files"})
       end
 
-      output = result[:output].to_s
-      exit_code = result[:exit_code]
-      raise CommandFailure.new(exit_code, "git ls-files failed with #{exit_code} in path #{repository}: #{output}") if exit_code != 0
+      output = result.output.to_s
+      exit_code = result.status.exit_code
+      raise CommandFailure.new(exit_code, "git ls-files failed with #{exit_code} in path #{repository}: #{output}") unless result.status.success?
 
       output.split("\n")
     end
 
-    alias Commit = NamedTuple(commit: String, date: String, author: String, subject: String)
+    record Commit, commit : String, date : String, author : String, subject : String
 
-    def self.commits(file_name, count = 50, repository = Compiler.drivers_dir) : Array(Commit)
+    def self.commits(file_name : String, repository : String, count : Int32 = 50) : Array(Commit)
       # https://git-scm.com/docs/pretty-formats
       # %h: abbreviated commit hash
       # %cI: committer date, strict ISO 8601 format
@@ -47,38 +34,35 @@ module PlaceOS::Compiler
         ExecFrom.exec_from(repository, "git", {"--no-pager", "log", "--format=format:%h%n%cI%n%an%n%s%n<--%n%n-->", "--no-color", "-n", count.to_s, file_name})
       end
 
-      output = result[:output].to_s
-      exit_code = result[:exit_code]
-      raise CommandFailure.new(exit_code, "git log failed with #{exit_code} in path #{repository}: #{output}") if exit_code != 0
+      output = result.output.to_s
+      exit_code = result.status.exit_code
+      raise CommandFailure.new(exit_code, "git log failed with #{exit_code} in path #{repository}: #{output}") unless result.status.success?
 
       output.strip.split("<--\n\n-->")
         .reject(&.empty?)
         .map(&.strip.split("\n").map &.strip)
         .map do |commit|
-          {
-            commit:  commit[0],
-            date:    commit[1],
-            author:  commit[2],
-            subject: commit[3],
-          }
+          Commit.new(
+            commit: commit[0],
+            date: commit[1],
+            author: commit[2],
+            subject: commit[3]
+          )
         end
     end
 
-    def self.diff(file_name, repository = Compiler.drivers_dir)
+    def self.diff(file_name : String, repository : String) : String
       result = file_operation(repository, file_name) do
         ExecFrom.exec_from(repository, "git", {"--no-pager", "diff", "--no-color", file_name})
       end
 
-      output = result[:output].to_s
-      exit_code = result[:exit_code]
-
       # File most likely doesn't exist
-      return "error: #{output}" if exit_code != 0
+      return "error: #{result.output}" unless result.status.success?
 
-      output.strip
+      result.output.to_s.strip
     end
 
-    def self.repository_commits(repository = Compiler.drivers_dir, count = 50)
+    def self.repository_commits(repository : String, count : Int32 = 50) : Array(Commit)
       # https://git-scm.com/docs/pretty-formats
       # %h: abbreviated commit hash
       # %cI: committer date, strict ISO 8601 format
@@ -88,20 +72,23 @@ module PlaceOS::Compiler
         ExecFrom.exec_from(repository, "git", {"--no-pager", "log", "--format=format:%h%n%cI%n%an%n%s%n<--%n%n-->", "--no-color", "-n", count.to_s})
       end
 
-      output = result[:output].to_s
-      exit_code = result[:exit_code]
-      raise CommandFailure.new(exit_code, "git log failed with #{exit_code} in path #{repository}: #{output}") if exit_code != 0
+      unless result.status.success?
+        exit_code = result.status.exit_code
+        raise CommandFailure.new(exit_code, "`git log` failed with #{exit_code} in path #{repository}: #{result.output}")
+      end
 
-      output.strip.split("<--\n\n-->")
+      result
+        .output.to_s
+        .strip.split("<--\n\n-->")
         .reject(&.empty?)
         .map(&.strip.split("\n").map &.strip)
         .map do |commit|
-          {
-            commit:  commit[0],
-            date:    commit[1],
-            author:  commit[2],
+          Commit.new(
+            commit: commit[0],
+            date: commit[1],
+            author: commit[2],
             subject: commit[3],
-          }
+          )
         end
     end
 
@@ -124,19 +111,19 @@ module PlaceOS::Compiler
         ExecFrom.exec_from(repository_directory, "git", {"checkout", commit, "--", file})
       end
 
-      exit_code = result[:exit_code]
-      raise CommandFailure.new(exit_code, "git checkout failed with #{exit_code} in path #{repository_directory}: #{result[:output]}") if exit_code != 0
+      exit_code = result.status.exit_code
+      raise CommandFailure.new(exit_code, "git checkout failed with #{exit_code} in path #{repository_directory}: #{result.output}") unless result.status.success?
     end
 
-    def self.checkout_branch(branch : String, repository : String = Compiler.drivers_dir)
+    def self.checkout_branch(branch : String, repository : String)
       result = repo_operation(repository) do
         ExecFrom.exec_from(repository, "git", {"checkout", branch}, environment: {"GIT_TERMINAL_PROMPT" => "0"})
       end
 
-      exit_code = result[:exit_code]
-      output = result[:output]
+      exit_code = result.status.exit_code
+      output = result.output.to_s
 
-      raise CommandFailure.new(exit_code, "git checkout failed with #{exit_code} in path #{repository}: #{output}") if exit_code != 0
+      raise CommandFailure.new(exit_code, "git checkout failed with #{exit_code} in path #{repository}: #{output}") unless result.status.success?
       output.to_s.strip
     end
 
@@ -148,22 +135,17 @@ module PlaceOS::Compiler
         ExecFrom.exec_from(repository, "git", arguments, environment: {"GIT_TERMINAL_PROMPT" => "0"})
       end
 
-      exit_code = result[:exit_code]
-      output = result[:output]
+      exit_code = result.status.exit_code
+      output = result.output.to_s
 
-      raise CommandFailure.new(exit_code, "git fetch failed with #{exit_code} in path #{repository}: #{output}") if exit_code != 0
+      raise CommandFailure.new(exit_code, "git fetch failed with #{exit_code} in path #{repository}: #{output}") unless result.status.success?
       output.to_s.strip
     end
 
     def self.pull(repository, working_dir = Compiler.repository_dir, branch : String = "master")
       working_dir = File.expand_path(working_dir)
-      repo_dir = File.expand_path(repository, working_dir)
 
-      # Double check the input directories
-      unless repo_dir.starts_with?(working_dir)
-        raise "invalid folder structure. Working directory: '#{working_dir}', repository: '#{repository}', resulting path: '#{repo_dir}'"
-      end
-
+      repo_dir = repository_path(repository, working_dir)
       raise "repository does not exist. Path: '#{repo_dir}'" unless File.directory?(repo_dir)
 
       # Assumes no password required. Re-clone if this has changed.
@@ -173,19 +155,38 @@ module PlaceOS::Compiler
         ExecFrom.exec_from(repo_dir, "git", {"pull", "origin", branch}, environment: {"GIT_TERMINAL_PROMPT" => "0"})
       end
 
-      {
-        exit_status: result[:exit_code],
-        output:      result[:output].to_s,
-      }
+      Result::Command.new(
+        exit_code: result.status.exit_code,
+        output: result.output.to_s,
+      )
     end
 
-    def self.clone(repository, repository_uri, username = nil, password = nil, working_dir = Compiler.repository_dir, depth : Int32? = nil, branch : String = "master")
-      working_dir = File.expand_path(working_dir)
-      repo_dir = File.expand_path(File.join(working_dir, repository))
+    # Ensure the expanded repository path is safe
+    #
+    def self.repository_path(repository : String, working_directory : String)
+      repository_directory = File.expand_path(File.join(working_directory, repository))
+      if !repository_directory.starts_with?(working_directory) ||
+         repository_directory == "/" ||
+         repository.size.zero? ||
+         repository.includes?("/") ||
+         repository.includes?(".")
+        raise "invalid folder structure. Working directory: '#{working_directory}', repository: '#{repository}', resulting path: '#{repository_directory}'"
+      end
 
-      # Ensure we are rm -rf a sane folder - don't want to delete root for example
-      valid = repo_dir.starts_with?(working_dir) && repo_dir != "/" && repository.size > 0 && !repository.includes?("/") && !repository.includes?(".")
-      raise "invalid folder structure. Working directory: '#{working_dir}', repository: '#{repository}', resulting path: '#{repo_dir}'" unless valid
+      repository_directory
+    end
+
+    def self.clone(
+      repository : String,
+      repository_uri : String,
+      username : String? = nil,
+      password : String? = nil,
+      working_dir = Compiler.repository_dir,
+      depth : Int32? = nil,
+      branch : String = "master"
+    )
+      working_dir = File.expand_path(working_dir)
+      repo_dir = repository_path(repository, working_dir)
 
       if username && password
         uri_builder = URI.parse(repository_uri)
@@ -211,10 +212,10 @@ module PlaceOS::Compiler
             end
           end
 
-          {
-            exit_status: 0,
-            output:      "already exists",
-          }
+          Result::Command.new(
+            exit_code: 0,
+            output: "already exists"
+          )
         else
           # Ensure the cloned into directory does not exist
           ExecFrom.exec_from(working_dir, "rm", {"-rf", repository}) if Dir.exists?(repository_path)
@@ -226,10 +227,10 @@ module PlaceOS::Compiler
           # Clone the repository
           result = ExecFrom.exec_from(working_dir, "git", args, environment: {"GIT_TERMINAL_PROMPT" => "0"})
 
-          {
-            exit_status: result[:exit_code],
-            output:      result[:output].to_s,
-          }
+          Result::Command.new(
+            exit_code: result.status.exit_code,
+            output: result.output.to_s
+          )
         end
       end
     end
@@ -240,12 +241,29 @@ module PlaceOS::Compiler
         ExecFrom.exec_from(repository, "git", {"rev-parse", "--abbrev-ref", "HEAD"})
       end
 
-      output = result[:output]
-      exit_code = result[:exit_code]
-
-      raise CommandFailure.new(exit_code, "git rev-parse failed with #{exit_code} in path #{repository}: #{output}") if exit_code != 0
-      output.to_s.strip
+      unless result.status.success?
+        exit_code = result.status.exit_code
+        raise CommandFailure.new(exit_code, "git rev-parse failed with #{exit_code} in path #{repository}: #{result.output}")
+      end
+      result.output.to_s.strip
     end
+
+    # Repository access synchronization
+    ###############################################################################################
+
+    # Will really only be an issue once threads come along
+    @@lock_manager = Mutex.new
+
+    # Allow multiple file level operations to occur in parrallel
+    # File level operations are readers, repo level are writers
+    @@repository_lock = {} of String => RWLock
+
+    # Ensure only a single git operation is occuring at once to avoid corruption
+    @@operation_lock = {} of String => Mutex
+
+    # Ensures only a single operation on an individual file occurs at once
+    # This enables multi-version compilation to occur without clashing
+    @@file_lock = {} of String => Hash(String, Mutex)
 
     # Use this for simple git operations, such as `git ls`
     def self.basic_operation(repository)
@@ -277,8 +295,8 @@ module PlaceOS::Compiler
           # Reset incase of a crash during a file operation
           result = ExecFrom.exec_from(repository, "git", {"reset", "--hard"})
 
-          exit_code = result[:exit_code]
-          raise CommandFailure.new(exit_code, "git reset --hard failed with #{exit_code} in path #{repository}: #{result[:output]}") if exit_code != 0
+          exit_code = result.status.exit_code
+          raise CommandFailure.new(exit_code, "git reset --hard failed with #{exit_code} in path #{repository}: #{result.output}") unless result.status.success?
           yield
         end
       end

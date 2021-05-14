@@ -11,14 +11,14 @@ module PlaceOS
         commit: SPEC_COMMIT
       )
 
-      pp! result if result[:exit_status] != 0
+      pp! result unless result.success? != 0
 
-      result[:exit_status].should eq(0)
-      File.exists?(result[:executable]).should be_true
+      result.exit_code.should eq(0)
+      File.exists?(result.path).should be_true
 
       # Check it functions as expected
       io = IO::Memory.new
-      Process.run(result[:executable], {"-h"},
+      Process.run(result.path, {"-h"},
         input: Process::Redirect::Close,
         output: io,
         error: io
@@ -42,7 +42,7 @@ module PlaceOS
       Compiler.clone_and_install("ulid", "https://github.com/place-labs/ulid", branch: "test")
       File.file?(File.expand_path("./repositories/ulid/shard.yml")).should be_true
       File.directory?(File.expand_path("./repositories/ulid/src")).should be_true
-      Compiler::GitCommands.current_branch(File.expand_path("./repositories/ulid")).should eq "test"
+      Compiler::Git.current_branch(File.expand_path("./repositories/ulid")).should eq "test"
     end
 
     it "should compile a private driver" do
@@ -57,14 +57,14 @@ module PlaceOS
         commit: SPEC_COMMIT
       )
 
-      pp! result if result[:exit_status] != 0
+      pp! result unless result.success? != 0
 
-      result[:exit_status].should eq(0)
-      File.exists?(result[:executable]).should be_true
+      result.exit_code.should eq(0)
+      File.exists?(result.path).should be_true
 
       # Check it functions as expected
       io = IO::Memory.new
-      Process.run(result[:executable], {"-h"},
+      Process.run(result.path, {"-h"},
         input: Process::Redirect::Close,
         output: io,
         error: io
@@ -72,7 +72,7 @@ module PlaceOS
       io.to_s.starts_with?("Usage:").should be_true
 
       # Delete the file
-      File.delete(result[:executable])
+      File.delete(result.path)
     end
 
     it "should compile a private spec" do
@@ -87,9 +87,9 @@ module PlaceOS
         commit: SPEC_COMMIT
       )
 
-      spec_executable = result[:executable]
+      spec_executable = result.path
 
-      result[:exit_status].should eq(0)
+      result.exit_code.should eq(0)
       File.exists?(spec_executable).should be_true
 
       result = Compiler.build_driver(
@@ -100,7 +100,7 @@ module PlaceOS
       )
 
       # Ensure the driver we want to test exists
-      executable = result[:executable]
+      executable = result.path
       File.exists?(executable).should be_true
 
       # Check it functions as expected SPEC_RUN_DRIVER
@@ -112,7 +112,7 @@ module PlaceOS
         error: io
       ).exit_code
 
-      puts io.to_s if exit_code != 0
+      puts io.to_s unless result.success?
       exit_code.should eq(0)
 
       # Delete the file
