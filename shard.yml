@@ -1,5 +1,5 @@
 name: placeos-compiler
-version: 3.5.0
+version: 4.0.0
 crystal: ~> 1
 
 dependencies:
@@ -9,7 +9,8 @@ dependencies:
 
   exec_from:
     github: place-labs/exec_from
-    version: ~> 1.3
+    branch: refactor/remove-named-tuples
+    version: ~> 2.0
 
   rwlock:
     github: spider-gazelle/readers-writer

@@ -1,6 +1,6 @@
 require "./command_failure"
 require "./compiler"
-require "./git_commands"
+require "./git"
 
 module PlaceOS::Compiler
   module Helper
@@ -51,23 +51,23 @@ module PlaceOS::Compiler
     #
     # [{commit:, date:, author:, subject:}, ...]
     def repository_commits(repository_directory : String? = nil, count = 50)
-      GitCommands.repository_commits(get_repository_path(repository_directory), count)
+      Git.repository_commits(get_repository_path(repository_directory), count)
     end
 
     # Returns the latest commit hash for a repository
     def repository_commit_hash(repository_directory : String? = nil)
-      repository_commits(repository_directory, 1).first[:commit]
+      repository_commits(repository_directory, 1).first.commit
     end
 
     # File level commits
     # [{commit:, date:, author:, subject:}, ...]
-    def commits(file_path : String, repository_directory : String? = nil, count = 50)
-      GitCommands.commits(file_path, count, get_repository_path(repository_directory))
+    def commits(file_path : String, repository_directory : String? = nil, count : Int32 = 50)
+      Git.commits(file_path, get_repository_path(repository_directory), count)
     end
 
     # Returns the latest commit hash for a file
     def file_commit_hash(file_path : String, repository_directory : String? = nil)
-      commits(file_path, repository_directory, 1).first[:commit]
+      commits(file_path, repository_directory, 1).first.commit
     end
 
     # Takes a file path with a repository path and compiles it
@@ -92,7 +92,7 @@ module PlaceOS::Compiler
     ) : Array(String)
       # Check repository to prevent abuse (don't want to delete the wrong thing)
       repository_path = get_repository_path(repository_directory)
-      GitCommands.checkout(driver, commit || "HEAD", repository_path) do
+      Git.checkout(driver, commit || "HEAD", repository_path) do
         return [] of String unless File.exists?(File.join(repository_path, driver_file))
       end
 

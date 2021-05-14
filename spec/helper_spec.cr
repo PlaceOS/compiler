@@ -10,12 +10,12 @@ module PlaceOS::Compiler
 
     it "should build a driver" do
       commits = Helper.commits("drivers/place/private_helper.cr", "private_drivers")
-      commit = commits[0][:commit]
+      commit = commits.first.commit
       result = Helper.compile_driver("drivers/place/private_helper.cr", "private_drivers", commit)
-      pp! result if result[:exit_status] != 0
+      pp! result unless result.success?
 
-      result[:exit_status].should eq(0)
-      result[:executable].ends_with?("/drivers_place_private_helper_#{commit}").should be_true
+      result.exit_code.should eq(0)
+      result.path.ends_with?("/drivers_place_private_helper_#{commit}").should be_true
     end
   end
 end
