@@ -1,6 +1,6 @@
 # PlaceOS Compiler
 
-[![Build Status](https://travis-ci.com/PlaceOS/compiler.svg?branch=master)](https://travis-ci.com/PlaceOS/compiler)
+[![CI](https://github.com/PlaceOS/compiler/actions/workflows/ci.yml/badge.svg)](https://github.com/PlaceOS/compiler/actions/workflows/ci.yml)
 
 Collection of PlaceOS Driver compilation tooling.
 
