@@ -11,7 +11,7 @@ module PlaceOS
         commit: SPEC_COMMIT
       )
 
-      pp! result unless result.success? != 0
+      pp! result unless result.success?
 
       result.exit_code.should eq(0)
       File.exists?(result.path).should be_true
@@ -57,7 +57,7 @@ module PlaceOS
         commit: SPEC_COMMIT
       )
 
-      pp! result unless result.success? != 0
+      pp! result unless result.success?
 
       result.exit_code.should eq(0)
       File.exists?(result.path).should be_true
