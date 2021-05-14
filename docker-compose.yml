@@ -23,7 +23,7 @@ services:
       # Service Hosts
       << : *redis-client-env
       # Environment
-      CI: ${CI-}
+      GITHUB_ACTION: ${GITHUB_ACTION-}
       << : *deployment-env
 
   redis:
