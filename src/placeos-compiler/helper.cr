@@ -1,5 +1,5 @@
-require "./command_failure"
 require "./compiler"
+require "./error"
 require "./git"
 
 module PlaceOS::Compiler
@@ -13,8 +13,8 @@ module PlaceOS::Compiler
 
     # Returns a list of driver source file paths in a repository
     # defaults to PlaceOS repository, i.e. this one
-    def drivers(repository_directory : String? = nil) : Array(String)
-      Dir.cd(get_repository_path(repository_directory)) do
+    def drivers(repository : String, working_directory : String) : Array(String)
+      Dir.cd(Git.repository_path(repository, working_directory)) do
         Dir.glob("drivers/**/*.cr").select do |file|
           # Must not be a spec and there must be a class that includes `placeos-driver` directly
           !file.ends_with?("_spec.cr") && File.open(file) do |f|
@@ -47,52 +47,18 @@ module PlaceOS::Compiler
       Compiler.executable_name(driver_file, commit, id)
     end
 
-    # Repository commits
-    #
-    # [{commit:, date:, author:, subject:}, ...]
-    def repository_commits(repository_directory : String? = nil, count = 50)
-      Git.repository_commits(get_repository_path(repository_directory), count)
-    end
-
-    # Returns the latest commit hash for a repository
-    def repository_commit_hash(repository_directory : String? = nil)
-      repository_commits(repository_directory, 1).first.commit
-    end
-
-    # File level commits
-    # [{commit:, date:, author:, subject:}, ...]
-    def commits(file_path : String, repository_directory : String? = nil, count : Int32 = 50)
-      Git.commits(file_path, get_repository_path(repository_directory), count)
-    end
-
-    # Returns the latest commit hash for a file
-    def file_commit_hash(file_path : String, repository_directory : String? = nil)
-      commits(file_path, repository_directory, 1).first.commit
-    end
-
-    # Takes a file path with a repository path and compiles it
-    # [{exit_status:, output:, driver:, version:, executable:, repository:}, ...]
-    def compile_driver(
-      driver_file : String,
-      repository_directory : String? = nil,
-      commit : String = "HEAD",
-      id : String? = nil
-    )
-      repository_path = get_repository_path(repository_directory)
-      Compiler.build_driver(driver_file, commit, repository_path, id: id)
-    end
-
     # Deletes a compiled driver
     # not providing a commit deletes all versions of the driver
     def delete_driver(
       driver_file : String,
-      repository_directory : String? = nil,
+      repository : String,
+      working_directory : String,
       commit : String? = nil,
       id : String? = nil
     ) : Array(String)
       # Check repository to prevent abuse (don't want to delete the wrong thing)
-      repository_path = get_repository_path(repository_directory)
-      Git.checkout(driver, commit || "HEAD", repository_path) do
+      repository_path = Git.repository_path(repository, working_directory)
+      Git.checkout(driver_file, repository, working_directory, commit || "HEAD") do
         return [] of String unless File.exists?(File.join(repository_path, driver_file))
       end
 
@@ -107,17 +73,6 @@ module PlaceOS::Compiler
       end
 
       files
-    end
-
-    def get_repository_path(repository_directory : String?) : String
-      if repository_directory
-        repo = File.expand_path(File.join(Compiler.repository_dir, repository_directory))
-        valid = repo.starts_with?(Compiler.repository_dir) && repo != "/" && repository_directory.size > 0 && !repository_directory.includes?("/") && !repository_directory.includes?(".")
-        raise "Invalid repository directory: #{repository_directory}" unless valid
-        repo
-      else
-        Compiler.drivers_dir
-      end
     end
   end
 end

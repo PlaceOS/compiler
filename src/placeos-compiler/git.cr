@@ -2,79 +2,45 @@ require "exec_from"
 require "rwlock"
 require "uri"
 
-require "./command_failure"
-require "./compiler"
+require "./error"
 require "./result"
 
 module PlaceOS::Compiler
   module Git
     Log = ::Log.for(self)
 
-    def self.ls(repository : String)
-      result = basic_operation(repository) do
-        ExecFrom.exec_from(repository, "git", {"--no-pager", "ls-files"})
+    def self.ls(repository : String, working_directory : String)
+      path = repository_path(repository, working_directory)
+      result = basic_operation(path) do
+        ExecFrom.exec_from(path, "git", {"--no-pager", "ls-files"})
       end
 
       output = result.output.to_s
       exit_code = result.status.exit_code
-      raise CommandFailure.new(exit_code, "git ls-files failed with #{exit_code} in path #{repository}: #{output}") unless result.status.success?
+      raise CommandFailure.new(exit_code, "git ls-files failed with #{exit_code} in path #{path}: #{output}") unless result.status.success?
 
       output.split("\n")
     end
 
+    # Commits
+    ###############################################################################################
+
     record Commit, commit : String, date : String, author : String, subject : String
 
-    def self.commits(file_name : String, repository : String, count : Int32 = 50) : Array(Commit)
+    def self.repository_commits(repository : String, working_directory : String, count : Int32 = 50) : Array(Commit)
+      path = repository_path(repository, working_directory)
       # https://git-scm.com/docs/pretty-formats
       # %h: abbreviated commit hash
       # %cI: committer date, strict ISO 8601 format
       # %an: author name
       # %s: subject
-      result = file_operation(repository, file_name) do
-        ExecFrom.exec_from(repository, "git", {"--no-pager", "log", "--format=format:%h%n%cI%n%an%n%s%n<--%n%n-->", "--no-color", "-n", count.to_s, file_name})
-      end
-
-      output = result.output.to_s
-      exit_code = result.status.exit_code
-      raise CommandFailure.new(exit_code, "git log failed with #{exit_code} in path #{repository}: #{output}") unless result.status.success?
-
-      output.strip.split("<--\n\n-->")
-        .reject(&.empty?)
-        .map(&.strip.split("\n").map &.strip)
-        .map do |commit|
-          Commit.new(
-            commit: commit[0],
-            date: commit[1],
-            author: commit[2],
-            subject: commit[3]
-          )
-        end
-    end
-
-    def self.diff(file_name : String, repository : String) : String
-      result = file_operation(repository, file_name) do
-        ExecFrom.exec_from(repository, "git", {"--no-pager", "diff", "--no-color", file_name})
-      end
-
-      # File most likely doesn't exist
-      return "error: #{result.output}" unless result.status.success?
-
-      result.output.to_s.strip
-    end
-
-    def self.repository_commits(repository : String, count : Int32 = 50) : Array(Commit)
-      # https://git-scm.com/docs/pretty-formats
-      # %h: abbreviated commit hash
-      # %cI: committer date, strict ISO 8601 format
-      # %an: author name
-      # %s: subject
-      result = repo_lock(repository).write do
-        ExecFrom.exec_from(repository, "git", {"--no-pager", "log", "--format=format:%h%n%cI%n%an%n%s%n<--%n%n-->", "--no-color", "-n", count.to_s})
+      result = repo_lock(path).write do
+        ExecFrom.exec_from(path, "git", {"--no-pager", "log", "--format=format:%h%n%cI%n%an%n%s%n<--%n%n-->", "--no-color", "-n", count.to_s})
       end
 
       unless result.status.success?
         exit_code = result.status.exit_code
-        raise CommandFailure.new(exit_code, "`git log` failed with #{exit_code} in path #{repository}: #{result.output}")
+        raise CommandFailure.new(exit_code, "`git log` failed with #{exit_code} in path #{path}: #{result.output}")
       end
 
       result
@@ -92,15 +58,85 @@ module PlaceOS::Compiler
         end
     end
 
-    def self.checkout(file : String, commit : String = "HEAD", repository : String = Compiler.drivers_dir)
+    def self.commits(file_name : String, repository : String, working_directory : String, count : Int32 = 50) : Array(Commit)
+      # https://git-scm.com/docs/pretty-formats
+      # %h: abbreviated commit hash
+      # %cI: committer date, strict ISO 8601 format
+      # %an: author name
+      # %s: subject
+      path = repository_path(repository, working_directory)
+      result = file_operation(path, file_name) do
+        ExecFrom.exec_from(path, "git", {"--no-pager", "log", "--format=format:%h%n%cI%n%an%n%s%n<--%n%n-->", "--no-color", "-n", count.to_s, file_name})
+      end
+
+      output = result.output
+      exit_code = result.status.exit_code
+      raise CommandFailure.new(exit_code, "git log failed with #{exit_code} in path #{repository}: #{output}") unless result.status.success?
+
+      output.to_s.strip.split("<--\n\n-->")
+        .reject(&.empty?)
+        .map(&.strip.split("\n").map &.strip)
+        .map do |commit|
+          Commit.new(
+            commit: commit[0],
+            date: commit[1],
+            author: commit[2],
+            subject: commit[3]
+          )
+        end
+    end
+
+    def self.current_file_commit(file_name : String, repository : String, working_directory : String) : String
+      commits(file_name, repository, working_directory, 1).first.commit
+    end
+
+    def self.current_repository_commit(repository : String, working_directory : String) : String
+      repository_commits(repository, working_directory, 1).first.commit
+    end
+
+    def self.branches(repository : String, working_directory : String) : Array(String)
+      path = repository_path(repository, working_directory)
+      Git.repo_operation(path) do
+        ExecFrom.exec_from(path, "git", {"fetch", "--all"}, environment: {"GIT_TERMINAL_PROMPT" => "0"})
+        result = ExecFrom.exec_from(path, "git", {"branch", "-r"}, environment: {"GIT_TERMINAL_PROMPT" => "0"})
+        exit_code = result.status.exit_code
+        output = result.output
+        raise CommandFailure.new(exit_code, "`git branch` failed with #{exit_code} in path #{repository}: #{output}") unless result.status.success?
+
+        output
+          .to_s
+          .lines
+          .compact_map { |l| l.strip.lchop("origin/") unless l =~ /HEAD/ }
+          .sort!
+          .uniq!
+      end
+    end
+
+    def self.diff(file_name : String, repository : String, working_directory : String) : String
+      path = repository_path(repository, working_directory)
+      result = file_operation(path, file_name) do
+        ExecFrom.exec_from(path, "git", {"--no-pager", "diff", "--no-color", file_name})
+      end
+
+      # File most likely doesn't exist
+      unless result.status.success?
+        exit_code = result.status.exit_code
+        raise CommandFailure.new(exit_code, "`git diff` failed with #{exit_code} in path #{path}: #{result.output}")
+      end
+
+      result.output.to_s.strip
+    end
+
+    def self.checkout(file : String, repository : String, working_directory : String, commit : String = "HEAD")
+      path = repository_path(repository, working_directory)
       # https://stackoverflow.com/questions/215718/reset-or-revert-a-specific-file-to-a-specific-revision-using-git
-      file_lock(repository, file) do
+      file_lock(path, file) do
         begin
-          _checkout(repository, file, commit)
+          _checkout(path, file, commit)
           yield file
         ensure
           # reset the file back to head
-          _checkout(repository, file, "HEAD")
+          _checkout(path, file, "HEAD")
         end
       end
     end
@@ -115,38 +151,38 @@ module PlaceOS::Compiler
       raise CommandFailure.new(exit_code, "git checkout failed with #{exit_code} in path #{repository_directory}: #{result.output}") unless result.status.success?
     end
 
-    def self.checkout_branch(branch : String, repository : String)
-      result = repo_operation(repository) do
-        ExecFrom.exec_from(repository, "git", {"checkout", branch}, environment: {"GIT_TERMINAL_PROMPT" => "0"})
+    def self.checkout_branch(branch : String, repository : String, working_directory : String)
+      path = repository_path(repository, working_directory)
+      result = repo_operation(path) do
+        ExecFrom.exec_from(path, "git", {"checkout", branch}, environment: {"GIT_TERMINAL_PROMPT" => "0"})
       end
 
       exit_code = result.status.exit_code
       output = result.output.to_s
 
-      raise CommandFailure.new(exit_code, "git checkout failed with #{exit_code} in path #{repository}: #{output}") unless result.status.success?
+      raise CommandFailure.new(exit_code, "git checkout failed with #{exit_code} in path #{path}: #{output}") unless result.status.success?
       output.to_s.strip
     end
 
-    def self.fetch(repository : String, remote : String? = nil)
+    def self.fetch(repository : String, working_directory : String, remote : String? = nil)
+      path = repository_path(repository, working_directory)
       base_arguments = {"fetch", "-a"}
       arguments = remote.nil? ? base_arguments : base_arguments + {remote}
 
-      result = operation_lock(repository).synchronize do
-        ExecFrom.exec_from(repository, "git", arguments, environment: {"GIT_TERMINAL_PROMPT" => "0"})
+      result = operation_lock(path).synchronize do
+        ExecFrom.exec_from(path, "git", arguments, environment: {"GIT_TERMINAL_PROMPT" => "0"})
       end
 
       exit_code = result.status.exit_code
       output = result.output.to_s
 
-      raise CommandFailure.new(exit_code, "git fetch failed with #{exit_code} in path #{repository}: #{output}") unless result.status.success?
+      raise CommandFailure.new(exit_code, "git fetch failed with #{exit_code} in path #{path}: #{output}") unless result.status.success?
       output.to_s.strip
     end
 
-    def self.pull(repository, working_dir = Compiler.repository_dir, branch : String = "master")
-      working_dir = File.expand_path(working_dir)
-
-      repo_dir = repository_path(repository, working_dir)
-      raise "repository does not exist. Path: '#{repo_dir}'" unless File.directory?(repo_dir)
+    def self.pull(repository : String, working_directory : String, branch : String = "master")
+      repo_dir = repository_path(repository, working_directory)
+      raise Error.new("repository does not exist. Path: '#{repo_dir}'") unless File.directory?(repo_dir)
 
       # Assumes no password required. Re-clone if this has changed.
       # The call to write here ensures that no other operations are occuring on
@@ -161,32 +197,16 @@ module PlaceOS::Compiler
       )
     end
 
-    # Ensure the expanded repository path is safe
-    #
-    def self.repository_path(repository : String, working_directory : String)
-      repository_directory = File.expand_path(File.join(working_directory, repository))
-      if !repository_directory.starts_with?(working_directory) ||
-         repository_directory == "/" ||
-         repository.size.zero? ||
-         repository.includes?("/") ||
-         repository.includes?(".")
-        raise "invalid folder structure. Working directory: '#{working_directory}', repository: '#{repository}', resulting path: '#{repository_directory}'"
-      end
-
-      repository_directory
-    end
-
     def self.clone(
       repository : String,
       repository_uri : String,
+      working_directory : String,
       username : String? = nil,
       password : String? = nil,
-      working_dir = Compiler.repository_dir,
       depth : Int32? = nil,
       branch : String = "master"
     )
-      working_dir = File.expand_path(working_dir)
-      repo_dir = repository_path(repository, working_dir)
+      repo_dir = repository_path(repository, working_directory)
 
       if username && password
         uri_builder = URI.parse(repository_uri)
@@ -199,14 +219,14 @@ module PlaceOS::Compiler
       # the repository at this time.
       repo_lock(repo_dir).write do
         # Ensure the repository directory exists (it should)
-        Dir.mkdir_p working_dir
-        repository_path = File.join(working_dir, repository)
+        Dir.mkdir_p working_directory
+        repository_path = File.join(working_directory, repository)
 
         # Check if there's an existing repo
         if Dir.exists?(File.join(repository_path, ".git"))
           if (current = current_branch(repository_path)) != branch
             begin
-              checkout_branch(branch, repository_path)
+              checkout_branch(branch, repository_path, working_directory)
             rescue e
               Log.error(exception: e) { "failed to update cloned repository branch from #{current} to #{branch}" }
             end
@@ -218,14 +238,14 @@ module PlaceOS::Compiler
           )
         else
           # Ensure the cloned into directory does not exist
-          ExecFrom.exec_from(working_dir, "rm", {"-rf", repository}) if Dir.exists?(repository_path)
+          ExecFrom.exec_from(working_directory, "rm", {"-rf", repository}) if Dir.exists?(repository_path)
 
           args = ["clone", repository_uri, repository]
           args.insert(1, "--depth=#{depth}") unless depth.nil?
           args.insert(1, "--branch=#{branch}")
 
           # Clone the repository
-          result = ExecFrom.exec_from(working_dir, "git", args, environment: {"GIT_TERMINAL_PROMPT" => "0"})
+          result = ExecFrom.exec_from(working_directory, "git", args, environment: {"GIT_TERMINAL_PROMPT" => "0"})
 
           Result::Command.new(
             exit_code: result.status.exit_code,
@@ -236,16 +256,37 @@ module PlaceOS::Compiler
     end
 
     # https://stackoverflow.com/questions/6245570/how-to-get-the-current-branch-name-in-git
-    def self.current_branch(repository)
-      result = basic_operation(repository) do
-        ExecFrom.exec_from(repository, "git", {"rev-parse", "--abbrev-ref", "HEAD"})
+    def self.current_branch(repository_path : String)
+      result = basic_operation(repository_path) do
+        ExecFrom.exec_from(repository_path, "git", {"rev-parse", "--abbrev-ref", "HEAD"})
       end
 
       unless result.status.success?
         exit_code = result.status.exit_code
-        raise CommandFailure.new(exit_code, "git rev-parse failed with #{exit_code} in path #{repository}: #{result.output}")
+        raise CommandFailure.new(exit_code, "git rev-parse failed with #{exit_code} in path #{repository_path}: #{result.output}")
       end
       result.output.to_s.strip
+    end
+
+    def self.current_branch(repository : String, working_directory : String)
+      path = repository_path(repository, working_directory)
+      current_branch(path)
+    end
+
+    # Ensure the expanded repository path is safe
+    #
+    def self.repository_path(repository : String, working_directory : String)
+      working_directory = File.expand_path(working_directory)
+      repository_directory = File.expand_path(File.join(working_directory, repository))
+      if !repository_directory.starts_with?(working_directory) ||
+         repository_directory == "/" ||
+         repository.size.zero? ||
+         repository.includes?("/") ||
+         repository.includes?(".")
+        raise Error.new("invalid folder structure. Working directory: '#{working_directory}', repository: '#{repository}', resulting path: '#{repository_directory}'")
+      end
+
+      repository_directory
     end
 
     # Repository access synchronization

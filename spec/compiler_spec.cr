@@ -7,7 +7,7 @@ module PlaceOS
       # Test the executable is created
       result = Compiler.build_driver(
         "drivers/place/private_helper.cr",
-        repository_drivers: File.join(Compiler.repository_dir, "private_drivers"),
+        "private_drivers",
         commit: SPEC_COMMIT
       )
 
@@ -29,7 +29,7 @@ module PlaceOS
     it "should list compiled versions" do
       files = Compiler.compiled_drivers("drivers/place/private_helper.cr")
 
-      files.size.should eq Dir.children(Compiler.bin_dir).count { |f| !f.includes?('.') && f.starts_with?("drivers_place_private_helper") }
+      files.size.should eq Dir.children(Compiler.binary_dir).count { |f| !f.includes?('.') && f.starts_with?("drivers_place_private_helper") }
       files.first.should start_with("drivers_place_private_helper")
     end
 
@@ -53,7 +53,7 @@ module PlaceOS
       # Test the executable is created
       result = Compiler.build_driver(
         "drivers/place/private_helper.cr",
-        repository_drivers: File.join(Compiler.repository_dir, "private_drivers"),
+        "private_drivers",
         commit: SPEC_COMMIT
       )
 
@@ -78,11 +78,10 @@ module PlaceOS
     it "should compile a private spec" do
       # Clone the private driver repo
       Compiler.clone_and_install("private_drivers", "https://github.com/placeos/private-drivers.git")
-      repository_path = Compiler::Helper.get_repository_path("private_drivers")
       # Test the executable is created
       result = Compiler.build_driver(
         "drivers/place/private_helper_spec.cr",
-        repository_drivers: repository_path,
+        repository: "private_drivers",
         git_checkout: false,
         commit: SPEC_COMMIT
       )
@@ -94,7 +93,7 @@ module PlaceOS
 
       result = Compiler.build_driver(
         "drivers/place/private_helper.cr",
-        repository_drivers: repository_path,
+        repository: "private_drivers",
         git_checkout: false,
         commit: SPEC_COMMIT
       )
