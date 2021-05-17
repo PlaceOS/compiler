@@ -7,19 +7,20 @@ require "./result"
 module PlaceOS::Compiler
   Log = ::Log.for(self)
 
-  class_property drivers_dir : String = Dir.current
   class_property repository_dir : String = File.expand_path("./repositories")
-  class_property bin_dir : String = "#{Dir.current}/bin/drivers"
+  class_property binary_dir : String = "#{Dir.current}/bin/drivers"
+  class_property crystal_binary_path : String = Process.find_executable("crystal") || abort("no `crystal` binary in the environment")
 
   def self.is_built?(
     source_file : String,
+    repository : String,
     commit : String = "HEAD",
-    repository_drivers : String = drivers_dir,
-    binary_directory : String = bin_dir,
+    working_directory : String = repository_dir,
+    binary_directory : String = binary_dir,
     id : String? = nil
   )
     # Make sure we have an actual version hash of the file
-    commit = self.normalize_commit(commit, source_file, repository_drivers)
+    commit = self.normalize_commit(commit, source_file, repository, working_directory)
     executable_path = File.join(binary_directory, self.executable_name(source_file, commit, id))
 
     executable_path if File.exists?(executable_path)
@@ -28,29 +29,33 @@ module PlaceOS::Compiler
   # Repository is required to have a local `build.cr` file to support compilation
   def self.build_driver(
     source_file : String,
+    repository : String,
     commit : String = "HEAD",
-    repository_drivers : String = drivers_dir,
-    binary_directory : String = bin_dir,
+    working_directory : String = repository_dir,
+    binary_directory : String = binary_dir,
     id : String? = nil,
     git_checkout : Bool = true,
-    debug : Bool = false
+    debug : Bool = false,
+    crystal_binary_path : String = crystal_binary_path
   ) : Result::Build
     # Ensure the bin directory exists
     Dir.mkdir_p binary_directory
 
     # Make sure we have an actual version hash of the file
-    commit = normalize_commit(commit, source_file, repository_drivers)
+    commit = normalize_commit(commit, source_file, repository, working_directory)
     driver_executable = executable_name(source_file, commit, id)
+
+    repository_path = Git.repository_path(repository, working_directory)
     executable_path = nil
 
-    result = Git.file_lock(repository_drivers, source_file) do
+    result = Git.file_lock(repository_path, source_file) do
       git_checkout = false if commit == "HEAD"
 
       # TODO: Expose some kind of status signalling compilation
       Log.debug { "compiling #{source_file} @ #{commit}" }
 
       executable_path = File.join(binary_directory, driver_executable)
-      build_script = File.join(repository_drivers, "src/build.cr")
+      build_script = File.join(repository_path, "src/build.cr")
 
       # If we are building head and don't want to check anything out
       # then we can assume we definitely want to re-build the driver
@@ -61,11 +66,11 @@ module PlaceOS::Compiler
 
       # When developing you may not want to have to commit
       if git_checkout
-        Git.checkout(source_file, commit, repository_drivers) do
-          _compile(repository_drivers, executable_path, build_script, source_file, debug)
+        Git.checkout(source_file, repository, working_directory, commit) do
+          _compile(repository_path, executable_path, build_script, source_file, debug, crystal_binary_path)
         end
       else
-        _compile(repository_drivers, executable_path, build_script, source_file, debug)
+        _compile(repository_path, executable_path, build_script, source_file, debug, crystal_binary_path)
       end
     end
 
@@ -74,24 +79,42 @@ module PlaceOS::Compiler
       exit_code: result.status.exit_code,
       name: driver_executable,
       path: executable_path || "",
-      repository: repository_drivers,
+      repository: repository_path,
       commit: commit,
     )
   end
 
-  def self._compile(
-    repository_drivers : String,
+  # Ensure that the crystal binary exists, and works as expected
+  protected def self.check_crystal!(crystal_binary_path : String) : Nil
+    output = IO::Memory.new
+    status = Process.run(crystal_binary_path, args: {"-v"}, output: output, error: output)
+
+    # Done to avoid the need to load the whole IO into strings.
+    lines = output.rewind.each_line
+    first = lines.next
+    first = nil if first.is_a?(Iterator::Stop)
+
+    unless status.success? && (first && first.starts_with? "Crystal")
+      raise Error.new("running `crystal` at #{crystal_binary_path} failed: #{first}#{"\n#{lines.join("\n")}" unless lines.empty?}")
+    end
+  end
+
+  protected def self._compile(
+    repository_path : String,
     executable_path : String,
     build_script : String,
     source_file : String,
-    debug : Bool
+    debug : Bool,
+    crystal_binary_path : String
   ) : ExecFrom::Result
     arguments = ["build", "--static", "--no-color", "--error-trace", "-o", executable_path, build_script]
     arguments.insert(1, "--debug") if debug
 
+    check_crystal!(crystal_binary_path)
+
     ExecFrom.exec_from(
-      directory: repository_drivers,
-      command: "crystal",
+      directory: repository_path,
+      command: crystal_binary_path,
       arguments: arguments,
       environment: {
         "COMPILE_DRIVER" => source_file,
@@ -100,7 +123,7 @@ module PlaceOS::Compiler
       })
   end
 
-  def self.compiled_drivers(source_file : String? = nil, id : String? = nil, binary_directory : String = bin_dir)
+  def self.compiled_drivers(source_file : String? = nil, id : String? = nil, binary_directory : String = binary_dir)
     if source_file.nil?
       Dir.children(binary_directory).reject do |file|
         file.includes?(".") || File.directory?(file)
@@ -116,13 +139,13 @@ module PlaceOS::Compiler
     end
   end
 
-  def self.repositories(working_dir : String = repository_dir)
-    Dir.children(working_dir).reject { |file| File.file?(file) || file.starts_with?('.') }
+  def self.repositories(working_directory : String = repository_dir)
+    Dir.children(working_directory).reject { |file| File.file?(file) || file.starts_with?('.') }
   end
 
   # Runs shards install to ensure driver builds will succeed
-  def self.install_shards(repository, working_dir = repository_dir)
-    repo_dir = File.expand_path(File.join(working_dir, repository))
+  def self.install_shards(repository : String, working_directory : String = repository_dir)
+    repo_dir = File.expand_path(File.join(working_directory, repository))
     # NOTE:: supports recursive locking so can perform multiple repository
     # operations in a single lock. i.e. clone + shards install
     Git.repo_lock(repo_dir).write do
@@ -153,33 +176,39 @@ module PlaceOS::Compiler
     username : String? = nil,
     password : String? = nil,
     branch : String = "master",
-    working_dir : String = repository_dir,
+    working_directory : String = repository_dir,
     pull_if_exists : Bool = true
   )
-    Git.repo_lock(repository).write do
+    repository_path = Git.repository_path(repository, working_directory)
+    Git.repo_lock(repository_path).write do
       clone_result = Git.clone(
         repository: repository,
         repository_uri: repository_uri,
         username: username,
         password: password,
-        working_dir: working_dir,
+        working_directory: working_directory,
         branch: branch,
       )
-
-      raise "failed to clone\n#{clone_result.output}" unless clone_result.success?
+      unless clone_result.success?
+        raise CommandFailure.new(clone_result.exit_code, "failed to `git clone`: #{clone_result.output}")
+      end
 
       # Pull if already cloned and pull intended
       if clone_result.output.to_s.includes?("already exists") && pull_if_exists
         pull_result = Git.pull(
           repository: repository,
-          working_dir: working_dir,
+          working_directory: working_directory,
           branch: branch,
         )
-        raise "failed to pull\n#{pull_result.output}" unless pull_result.success?
+        unless pull_result.success?
+          raise CommandFailure.new(pull_result.exit_code, "failed to `git pull`: #{pull_result.output}")
+        end
       end
 
-      install_result = install_shards(repository, working_dir)
-      raise "failed to install shards\n#{install_result.output}" unless install_result.success?
+      install_result = install_shards(repository, working_directory)
+      unless install_result.success?
+        raise CommandFailure.new(install_result.exit_code, "failed to `shards install`: #{install_result.output}")
+      end
     end
   end
 
@@ -198,16 +227,12 @@ module PlaceOS::Compiler
     end
   end
 
-  def self.current_commit(source_file, repository)
-    Git.commits(source_file, repository, 1).first.commit
-  end
-
-  # Ensure commit is an actual version hash of a file
-  def self.normalize_commit(commit, source_file, repository) : String
+  # Ensure commit is an actual SHA reference
+  def self.normalize_commit(commit, source_file, repository, working_directory) : String
     # Make sure we have an actual version hash of the file
-    if commit == "HEAD" && Git.diff(source_file, repository).empty?
+    if commit == "HEAD" && Git.diff(source_file, repository, working_directory).empty?
       # Allow uncommited files to be built
-      self.current_commit(source_file, repository) rescue commit
+      Git.current_file_commit(source_file, repository, working_directory) rescue commit
     else
       commit
     end

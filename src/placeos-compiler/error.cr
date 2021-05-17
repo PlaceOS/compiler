@@ -1,7 +1,10 @@
 require "exec_from"
 
 module PlaceOS::Compiler
-  class CommandFailure < Exception
+  class Error < Exception
+  end
+
+  class CommandFailure < Error
     getter exit_code : Int32
 
     def initialize(@exit_code = 1, message = nil)

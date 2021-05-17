@@ -3,63 +3,75 @@ require "yaml"
 
 module PlaceOS::Compiler
   describe Git do
-    private_drivers = Helper.get_repository_path("private_drivers")
-    private_readme = File.join(private_drivers, "README.md")
+    repository = "private_drivers"
+    working_directory = Compiler.repository_dir
+    repository_path = Git.repository_path(repository, working_directory)
+    readme = File.join(repository_path, "README.md")
+
     current_title = "# Private PlaceOS Drivers\n"
     old_title = "# Private Engine Drivers\n"
 
     it "should list files in the repository" do
-      files = Git.ls(private_drivers)
+      files = Git.ls(repository, working_directory)
       (files.size > 0).should be_true
       files.includes?("shard.yml").should be_true
     end
 
     it "should list the revisions to a file in a repository" do
-      changes = Git.commits("shard.yml", private_drivers, 200)
+      changes = Git.commits("shard.yml", repository, working_directory, 200)
       (changes.size > 0).should be_true
       changes.map(&.subject).includes?("simplify dependencies").should be_true
     end
 
     it "should list the revisions of a repository" do
-      changes = Git.repository_commits(private_drivers, 200)
+      changes = Git.repository_commits(repository, working_directory, 200)
       (changes.size > 0).should be_true
       changes.map(&.subject).includes?("simplify dependencies").should be_true
     end
 
-    it "should checkout a particular revision of a file and then restore it" do
-      # Check the current file
-      title = File.open(private_readme, &.gets('\n'))
-      title.should eq(current_title)
-
-      # Process a particular commit
-      Git.checkout("README.md", "0bcfa6e4a9ad832fadf799f15f269608d61086a7", private_drivers) do
-        title = File.open(private_readme, &.gets('\n'))
-        title.should eq(old_title)
+    describe ".branches" do
+      it "lists branches" do
+        branches = Git.branches(repository, working_directory)
+        branches.should contain("master")
       end
-
-      # File should have reverted
-      title = File.open(private_readme, &.gets('\n'))
-      title.should eq(current_title)
     end
 
-    it "should checkout a file and then restore it on error" do
-      # Check the current file
-      title = File.open(private_readme, &.gets('\n'))
-      title.should eq(current_title)
+    describe ".checkout" do
+      it "will checkout a particular revision of a file and then restore it" do
+        # Check the current file
+        title = File.open(readme, &.gets('\n'))
+        title.should eq(current_title)
 
-      # Process a particular commit
-      expect_raises(Exception, "something went wrong") do
-        Git.checkout("README.md", "0bcfa6e4a9ad832fadf799f15f269608d61086a7", private_drivers) do
-          title = File.open(private_readme, &.gets('\n'))
+        # Process a particular commit
+        Git.checkout("README.md", repository, working_directory, commit: "0bcfa6e4a9ad832fadf799f15f269608d61086a7") do
+          title = File.open(readme, &.gets('\n'))
           title.should eq(old_title)
-
-          raise "something went wrong"
         end
+
+        # File should have reverted
+        title = File.open(readme, &.gets('\n'))
+        title.should eq(current_title)
       end
 
-      # File should have reverted
-      title = File.open(private_readme, &.gets('\n'))
-      title.should eq(current_title)
+      it "will checkout a file and then restore it on error" do
+        # Check the current file
+        title = File.open(readme, &.gets('\n'))
+        title.should eq(current_title)
+
+        # Process a particular commit
+        expect_raises(Exception, "something went wrong") do
+          Git.checkout("README.md", repository, working_directory, commit: "0bcfa6e4a9ad832fadf799f15f269608d61086a7") do
+            title = File.open(readme, &.gets('\n'))
+            title.should eq(old_title)
+
+            raise "something went wrong"
+          end
+        end
+
+        # File should have reverted
+        title = File.open(readme, &.gets('\n'))
+        title.should eq(current_title)
+      end
     end
   end
 end
