@@ -136,7 +136,6 @@ module PlaceOS::Compiler
 
     # Checkout a file relative to a directory
     protected def self._checkout_file(repository_directory : String, file : String, commit : String)
-      puts "\n#{repository_directory} - #{file} - #{commit}"
       operation_lock(repository_directory).synchronize do
         run_git(repository_directory, {"checkout", commit, "--", file}, raises: true)
       end

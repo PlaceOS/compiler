@@ -17,7 +17,7 @@ jobs:
           - 1.0.0
     steps:
       - uses: actions/checkout@v2
-      - name: Test crystal ${{ matrix.crystal }}
+      - name: Test with crystal ${{ matrix.crystal }}
         run: ./test
         env:
           CRYSTAL_VERSION: ${{ matrix.crystal }}
