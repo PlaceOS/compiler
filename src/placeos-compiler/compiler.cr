@@ -38,7 +38,8 @@ module PlaceOS::Compiler
     crystal_binary_path : String = crystal_binary_path,
     debug : Bool = false,
     release : Bool = false,
-    multithreaded : Bool = false
+    multithreaded : Bool = false,
+    shards_cache : String? = nil
   ) : Result::Build
     # Ensure the bin directory exists
     Dir.mkdir_p binary_directory
@@ -75,6 +76,7 @@ module PlaceOS::Compiler
         debug:               debug,
         release:             release,
         multithreaded:       multithreaded,
+        shards_cache:        shards_cache,
       }
 
       # When developing you may not want to have to commit
@@ -118,7 +120,8 @@ module PlaceOS::Compiler
     crystal_binary_path : String,
     debug : Bool,
     release : Bool,
-    multithreaded : Bool
+    multithreaded : Bool,
+    shards_cache : String?
   ) : ExecFrom::Result
     arguments = ["build", "--static", "--no-color", "--error-trace", "-o", executable_path, build_script]
     arguments.insert(1, "--debug") if debug
@@ -132,9 +135,10 @@ module PlaceOS::Compiler
       command: crystal_binary_path,
       arguments: arguments,
       environment: {
-        "COMPILE_DRIVER" => source_file,
-        "DEBUG"          => debug ? "1" : "0",
-        "CRYSTAL_PATH"   => ENV["CRYSTAL_PATH"]?,
+        "COMPILE_DRIVER"    => source_file,
+        "DEBUG"             => debug ? "1" : "0",
+        "CRYSTAL_PATH"      => ENV["CRYSTAL_PATH"]?,
+        "SHARDS_CACHE_PATH" => shards_cache,
       })
   end
 
@@ -165,7 +169,12 @@ module PlaceOS::Compiler
     # operations in a single lock. i.e. clone + shards install
     Git.repository_lock(repo_dir).write do
       # First check if the dependencies are satisfied
-      result = ExecFrom.exec_from(repo_dir, "shards", {"--no-color", "check", "--ignore-crystal-version", "--production"})
+      result = ExecFrom.exec_from(
+        repo_dir,
+        "shards", {"--no-color", "check", "--ignore-crystal-version", "--production"},
+        environment: {"SHARDS_CACHE_PATH" => shards_cache}
+      )
+
       output = result.output.to_s
       exit_code = result.status.exit_code
 
@@ -176,7 +185,11 @@ module PlaceOS::Compiler
         )
       else
         # Otherwise install shards
-        result = ExecFrom.exec_from(repo_dir, "shards", {"--no-color", "install", "--ignore-crystal-version", "--production"})
+        result = ExecFrom.exec_from(
+          repo_dir,
+          "shards", {"--no-color", "install", "--ignore-crystal-version", "--production"},
+          environment: {"SHARDS_CACHE_PATH" => shards_cache}
+        )
         Result::Command.new(
           exit_code: result.status.exit_code,
           output: result.output.to_s,
@@ -192,6 +205,7 @@ module PlaceOS::Compiler
     password : String? = nil,
     branch : String = "master",
     working_directory : String = repository_dir,
+    shards_cache : String? = nil,
     pull_if_exists : Bool = true
   )
     repository_path = Git.repository_path(repository, working_directory)
