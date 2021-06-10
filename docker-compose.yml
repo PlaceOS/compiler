@@ -14,6 +14,8 @@ services:
   test:
     build:
       context: ./
+      args:
+        crystal_version: ${CRYSTAL_VERSION:-1.0.0}
     volumes:
       - ./spec:/app/spec
       - ./src:/app/src

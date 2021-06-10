@@ -17,10 +17,11 @@ jobs:
           - 1.0.0
     steps:
       - uses: actions/checkout@v2
-      - name: Build test container
-        run: docker-compose build --build-arg crystal_version=${{ matrix.crystal }} test
-      - name: Suite
+      - name: Test crystal ${{ matrix.crystal }}
         run: ./test
+        env:
+          CRYSTAL_VERSION: ${{ matrix.crystal }}
+
   style:
     runs-on: ubuntu-latest
     container:
