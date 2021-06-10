@@ -217,26 +217,21 @@ module PlaceOS::Compiler
         password: password,
         working_directory: working_directory,
         branch: branch,
+        raises: true,
       )
-      unless clone_result.success?
-        raise CommandFailure.new(clone_result.exit_code, "failed to `git clone`: #{clone_result.output}")
-      end
 
       # Pull if already cloned and pull intended
       if clone_result.output.to_s.includes?("already exists") && pull_if_exists
-        pull_result = Git.pull(
+        Git.pull(
           repository: repository,
           working_directory: working_directory,
           branch: branch,
+          raises: true,
         )
-        unless pull_result.success?
-          raise CommandFailure.new(pull_result.exit_code, "failed to `git pull`: #{pull_result.output}")
-        end
       end
 
-      install_result = install_shards(repository, working_directory)
-      unless install_result.success?
-        raise CommandFailure.new(install_result.exit_code, "failed to `shards install`: #{install_result.output}")
+      install_shards(repository, working_directory, shards_cache).tap do |result|
+        raise CommandFailure.new(result.exit_code, "failed to `shards install`: #{result.output}") unless result.success?
       end
     end
   end

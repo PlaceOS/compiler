@@ -161,7 +161,7 @@ module PlaceOS::Compiler
       result.output.to_s.strip
     end
 
-    def self.pull(repository : String, working_directory : String, branch : String = "master")
+    def self.pull(repository : String, working_directory : String, branch : String = "master", raises : Bool = false)
       repo_dir = repository_path(repository, working_directory)
       unless File.directory?(File.join(repo_dir, ".git"))
         raise Error::Git.new("repository does not exist at '#{repo_dir}'")
@@ -171,7 +171,7 @@ module PlaceOS::Compiler
       # The call to write here ensures that no other operations are occuring on
       # the repository at this time.
       result = repo_operation(repo_dir) do
-        run_git(repo_dir, {"pull", "origin", branch})
+        run_git(repo_dir, {"pull", "origin", branch}, raises: raises)
       end
 
       Result::Command.new(
@@ -187,7 +187,8 @@ module PlaceOS::Compiler
       username : String? = nil,
       password : String? = nil,
       depth : Int32? = nil,
-      branch : String = "master"
+      branch : String = "master",
+      raises : Bool = false
     )
       repo_dir = repository_path(repository, working_directory)
 
@@ -211,7 +212,11 @@ module PlaceOS::Compiler
             begin
               checkout_branch(branch, repository, working_directory)
             rescue e
-              Log.error(exception: e) { "failed to update cloned repository branch from #{current} to #{branch}" }
+              if raises
+                raise Error::Git.new("failed to update cloned repository branch from #{current} to #{branch}", cause: e)
+              else
+                Log.warn(exception: e) { "failed to update cloned repository branch from #{current} to #{branch}" }
+              end
             end
           end
 
@@ -228,7 +233,7 @@ module PlaceOS::Compiler
           args.insert(1, "--branch=#{branch}")
 
           # Clone the repository
-          result = run_git(working_directory, args)
+          result = run_git(working_directory, args, raises: raises)
           Result::Command.new(
             exit_code: result.status.exit_code,
             output: result.output.to_s
