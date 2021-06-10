@@ -2,6 +2,11 @@ require "exec_from"
 
 module PlaceOS::Compiler
   class Error < Exception
+    class Git < Error
+      def self.from_result(command, result : ExecFrom::Result)
+        new("`git #{command.join(' ')}` failed with #{result.output}")
+      end
+    end
   end
 
   class CommandFailure < Error

@@ -36,14 +36,14 @@ module PlaceOS::Compiler
       end
     end
 
-    describe ".checkout" do
+    describe ".checkout_file" do
       it "will checkout a particular revision of a file and then restore it" do
         # Check the current file
         title = File.open(readme, &.gets('\n'))
         title.should eq(current_title)
 
         # Process a particular commit
-        Git.checkout("README.md", repository, working_directory, commit: "0bcfa6e4a9ad832fadf799f15f269608d61086a7") do
+        Git.checkout_file("README.md", repository, working_directory, commit: "0bcfa6e4a9ad832fadf799f15f269608d61086a7") do
           title = File.open(readme, &.gets('\n'))
           title.should eq(old_title)
         end
@@ -60,7 +60,7 @@ module PlaceOS::Compiler
 
         # Process a particular commit
         expect_raises(Exception, "something went wrong") do
-          Git.checkout("README.md", repository, working_directory, commit: "0bcfa6e4a9ad832fadf799f15f269608d61086a7") do
+          Git.checkout_file("README.md", repository, working_directory, commit: "0bcfa6e4a9ad832fadf799f15f269608d61086a7") do
             title = File.open(readme, &.gets('\n'))
             title.should eq(old_title)
 
