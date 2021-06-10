@@ -35,8 +35,10 @@ module PlaceOS::Compiler
     binary_directory : String = binary_dir,
     id : String? = nil,
     git_checkout : Bool = true,
+    crystal_binary_path : String = crystal_binary_path,
     debug : Bool = false,
-    crystal_binary_path : String = crystal_binary_path
+    release : Bool = false,
+    multithreaded : Bool = false
   ) : Result::Build
     # Ensure the bin directory exists
     Dir.mkdir_p binary_directory
@@ -64,13 +66,22 @@ module PlaceOS::Compiler
         File.delete(executable_path) rescue nil
       end
 
+      build_args = {
+        repository_path:     repository_path,
+        executable_path:     executable_path,
+        build_script:        build_script,
+        source_file:         source_file,
+        crystal_binary_path: crystal_binary_path,
+        debug:               debug,
+        release:             release,
+        multithreaded:       multithreaded,
+      }
+
       # When developing you may not want to have to commit
       if git_checkout
-        Git.checkout(source_file, repository, working_directory, commit) do
-          _compile(repository_path, executable_path, build_script, source_file, debug, crystal_binary_path)
-        end
+        Git.checkout_file(source_file, repository, working_directory, commit) { _compile(**build_args) }
       else
-        _compile(repository_path, executable_path, build_script, source_file, debug, crystal_binary_path)
+        _compile(**build_args)
       end
     end
 
@@ -104,11 +115,15 @@ module PlaceOS::Compiler
     executable_path : String,
     build_script : String,
     source_file : String,
+    crystal_binary_path : String,
     debug : Bool,
-    crystal_binary_path : String
+    release : Bool,
+    multithreaded : Bool
   ) : ExecFrom::Result
     arguments = ["build", "--static", "--no-color", "--error-trace", "-o", executable_path, build_script]
     arguments.insert(1, "--debug") if debug
+    arguments.insert(1, "--release") if release
+    arguments.insert(1, "--Dpreview_mt") if multithreaded
 
     check_crystal!(crystal_binary_path)
 
@@ -144,11 +159,11 @@ module PlaceOS::Compiler
   end
 
   # Runs shards install to ensure driver builds will succeed
-  def self.install_shards(repository : String, working_directory : String = repository_dir)
+  def self.install_shards(repository : String, working_directory : String = repository_dir, shards_cache : String? = nil)
     repo_dir = File.expand_path(File.join(working_directory, repository))
     # NOTE:: supports recursive locking so can perform multiple repository
     # operations in a single lock. i.e. clone + shards install
-    Git.repo_lock(repo_dir).write do
+    Git.repository_lock(repo_dir).write do
       # First check if the dependencies are satisfied
       result = ExecFrom.exec_from(repo_dir, "shards", {"--no-color", "check", "--ignore-crystal-version", "--production"})
       output = result.output.to_s
@@ -180,7 +195,7 @@ module PlaceOS::Compiler
     pull_if_exists : Bool = true
   )
     repository_path = Git.repository_path(repository, working_directory)
-    Git.repo_lock(repository_path).write do
+    Git.repository_lock(repository_path).write do
       clone_result = Git.clone(
         repository: repository,
         repository_uri: repository_uri,
