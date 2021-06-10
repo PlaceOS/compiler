@@ -13,19 +13,19 @@ module PlaceOS::Compiler
 
     it "should list files in the repository" do
       files = Git.ls(repository, working_directory)
-      (files.size > 0).should be_true
+      files.should_not be_empty
       files.includes?("shard.yml").should be_true
     end
 
     it "should list the revisions to a file in a repository" do
       changes = Git.commits("shard.yml", repository, working_directory, 200)
-      (changes.size > 0).should be_true
+      changes.should_not be_empty
       changes.map(&.subject).includes?("simplify dependencies").should be_true
     end
 
     it "should list the revisions of a repository" do
       changes = Git.repository_commits(repository, working_directory, 200)
-      (changes.size > 0).should be_true
+      changes.should_not be_empty
       changes.map(&.subject).includes?("simplify dependencies").should be_true
     end
 
