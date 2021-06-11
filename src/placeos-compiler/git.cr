@@ -120,33 +120,34 @@ module PlaceOS::Compiler
       checkout_file(file, repository, working_directory, commit)
     end
 
-    def self.checkout_file(file : String, repository : String, working_directory : String, commit : String = "HEAD")
+    def self.checkout_file(file : String, repository : String, working_directory : String, commit : String = "HEAD", branch : String = "master")
       path = repository_path(repository, working_directory)
       # https://stackoverflow.com/questions/215718/reset-or-revert-a-specific-file-to-a-specific-revision-using-git
       file_lock(path, file) do
         begin
-          _checkout_file(path, file, commit)
+          _checkout_file(path, file, commit, branch)
           yield file
         ensure
           # reset the file back to head
-          _checkout_file(path, file, "HEAD")
+          _checkout_file(path, file, "HEAD", branch)
         end
       end
     end
 
     # :nodoc:
     # Checkout a file relative to a repository
-    def self._checkout_file(repository_directory : String, file : String, commit : String)
+    def self._checkout_file(repository_directory : String, file : String, commit : String, branch : String)
       operation_lock(repository_directory).synchronize do
+        run_git(repository_directory, {"checkout", branch}, raises: true)
         run_git(repository_directory, {"checkout", commit, "--", file}, raises: true)
       end
     end
 
     # :nodoc:
     # Checkout a repository to a commit
-    def self._checkout(repository_directory : String, commit : String)
+    def self._checkout(repository_directory : String, commit : String, raises : Bool = true)
       operation_lock(repository_directory).synchronize do
-        run_git(repository_directory, {"checkout", commit}, raises: true)
+        run_git(repository_directory, {"checkout", commit}, raises: raises)
       end
     end
 
@@ -158,19 +159,16 @@ module PlaceOS::Compiler
       result.output.to_s.strip
     end
 
-    def self.fetch(repository : String, working_directory : String, remote : String? = nil)
+    def self.fetch(repository : String, working_directory : String)
       path = repository_path(repository, working_directory)
-      base_arguments = {"fetch", "-a"}
-      arguments = remote.nil? ? base_arguments : base_arguments + {remote}
-
       result = operation_lock(path).synchronize do
-        run_git(path, arguments, raises: true)
+        run_git(path, {"fetch", "--all"}, raises: true)
       end
 
       result.output.to_s.strip
     end
 
-    def self.pull(repository : String, working_directory : String, branch : String = "master", raises : Bool = false)
+    def self.pull(repository : String, working_directory : String, branch : String = "master", raises : Bool = false, remote : String = "origin")
       repo_dir = repository_path(repository, working_directory)
       unless File.directory?(File.join(repo_dir, ".git"))
         raise Error::Git.new("repository does not exist at '#{repo_dir}'")
@@ -179,8 +177,10 @@ module PlaceOS::Compiler
       # Assumes no password required. Re-clone if this has changed.
       # The call to write here ensures that no other operations are occuring on
       # the repository at this time.
-      result = repo_operation(repo_dir) do
-        run_git(repo_dir, {"pull", "origin", branch}, raises: raises)
+      result = repository_lock(repo_dir).write do
+        fetch(repository, working_directory, remote)
+        _checkout(repo_dir, branch, raises)
+        _checkout(repo_dir, "HEAD", raises)
       end
 
       Result::Command.new(
