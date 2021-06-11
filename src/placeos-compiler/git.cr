@@ -20,7 +20,9 @@ module PlaceOS::Compiler
     # Commits
     ###############################################################################################
 
-    record Commit, commit : String, date : String, author : String, subject : String
+    record Commit, commit : String, date : String, author : String, subject : String do
+      include JSON::Serializable
+    end
 
     def self.repository_commits(repository : String, working_directory : String, count : Int32 = 50) : Array(Commit)
       path = repository_path(repository, working_directory)
