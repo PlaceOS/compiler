@@ -134,15 +134,17 @@ module PlaceOS::Compiler
       end
     end
 
+    # :nodoc:
     # Checkout a file relative to a repository
-    protected def self._checkout_file(repository_directory : String, file : String, commit : String)
+    def self._checkout_file(repository_directory : String, file : String, commit : String)
       operation_lock(repository_directory).synchronize do
         run_git(repository_directory, {"checkout", commit, "--", file}, raises: true)
       end
     end
 
+    # :nodoc:
     # Checkout a repository to a commit
-    protected def self._checkout(repository_directory : String, commit : String)
+    def self._checkout(repository_directory : String, commit : String)
       operation_lock(repository_directory).synchronize do
         run_git(repository_directory, {"checkout", commit}, raises: true)
       end
