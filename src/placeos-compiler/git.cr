@@ -216,8 +216,17 @@ module PlaceOS::Compiler
         repository_path = File.join(working_directory, repository)
 
         # Check if there's an existing repo
-        if Dir.exists?(File.join(repository_path, ".git"))
-          if (current = current_branch(repository_path)) != branch
+        current = begin
+          if Dir.exists?(File.join(repository_path, ".git"))
+            current_branch(repository_path)
+          end
+        rescue e : Error::Git
+          Log.warn(exception: e) { "failed to query current branch from #{repository}, proceeding with clone" }
+          nil
+        end
+
+        if current
+          if current != branch
             begin
               checkout_branch(branch, repository, working_directory)
             rescue e
