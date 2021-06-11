@@ -116,8 +116,8 @@ module PlaceOS::Compiler
     end
 
     @[Deprecated("Use `Git.checkout_file` instead.")]
-    def self.checkout(**args)
-      checkout_file(**args)
+    def self.checkout(file : String, repository : String, working_directory : String, commit : String = "HEAD")
+      checkout_file(file, repository, working_directory, commit)
     end
 
     def self.checkout_file(file : String, repository : String, working_directory : String, commit : String = "HEAD")
@@ -134,10 +134,17 @@ module PlaceOS::Compiler
       end
     end
 
-    # Checkout a file relative to a directory
+    # Checkout a file relative to a repository
     protected def self._checkout_file(repository_directory : String, file : String, commit : String)
       operation_lock(repository_directory).synchronize do
         run_git(repository_directory, {"checkout", commit, "--", file}, raises: true)
+      end
+    end
+
+    # Checkout a repository to a commit
+    protected def self._checkout(repository_directory : String, commit : String)
+      operation_lock(repository_directory).synchronize do
+        run_git(repository_directory, {"checkout", commit}, raises: true)
       end
     end
 

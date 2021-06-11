@@ -220,14 +220,11 @@ module PlaceOS::Compiler
         raises: true,
       )
 
-      # Pull if already cloned and pull intended
+      # Pull if already cloned and pull instead (explicitly checkout latest HEAD)
       if clone_result.output.to_s.includes?("already exists") && pull_if_exists
-        Git.pull(
-          repository: repository,
-          working_directory: working_directory,
-          branch: branch,
-          raises: true,
-        )
+        Git.fetch(repository, working_directory)
+        Git.checkout_branch(branch, repository, working_directory)
+        Git._checkout(repository_path, "HEAD")
       end
 
       install_shards(repository, working_directory, shards_cache).tap do |result|
