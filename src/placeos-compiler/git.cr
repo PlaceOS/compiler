@@ -53,7 +53,10 @@ module PlaceOS::Compiler
         end
     end
 
-    def self.commits(file_name : String, repository : String, working_directory : String, count : Int32 = 50) : Array(Commit)
+    def self.commits(file_name : String | Array(String), repository : String, working_directory : String, count : Int32 = 50) : Array(Commit)
+      base_arguments = {"log", "--format=format:%h%n%cI%n%an%n%s%n<--%n%n-->", "--no-color", "-n", count.to_s, "--"}
+      arguments = base_arguments + (file_name.is_a?(String) ? {file_name} : file_name)
+
       # https://git-scm.com/docs/pretty-formats
       # %h: abbreviated commit hash
       # %cI: committer date, strict ISO 8601 format
@@ -61,12 +64,7 @@ module PlaceOS::Compiler
       # %s: subject
       path = repository_path(repository, working_directory)
       result = file_operation(path, file_name) do
-        run_git(
-          path,
-          {"log", "--format=format:%h%n%cI%n%an%n%s%n<--%n%n-->", "--no-color", "-n", count.to_s, file_name},
-          git_args: {"--no-pager"},
-          raises: true
-        )
+        run_git(path, arguments, git_args: {"--no-pager"}, raises: true)
       end
 
       result
