@@ -168,7 +168,7 @@ module PlaceOS::Compiler
       result.output.to_s.strip
     end
 
-    def self.pull(repository : String, working_directory : String, branch : String = "master", raises : Bool = false, remote : String = "origin")
+    def self.pull(repository : String, working_directory : String, branch : String = "master", raises : Bool = false)
       repo_dir = repository_path(repository, working_directory)
       unless File.directory?(File.join(repo_dir, ".git"))
         raise Error::Git.new("repository does not exist at '#{repo_dir}'")
@@ -178,7 +178,7 @@ module PlaceOS::Compiler
       # The call to write here ensures that no other operations are occuring on
       # the repository at this time.
       result = repository_lock(repo_dir).write do
-        fetch(repository, working_directory, remote)
+        fetch(repository, working_directory)
         _checkout(repo_dir, branch, raises)
         _checkout(repo_dir, "HEAD", raises)
       end
