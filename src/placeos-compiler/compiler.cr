@@ -78,7 +78,7 @@ module PlaceOS::Compiler
         release:             release,
         multithreaded:       multithreaded,
         shards_cache:        shards_cache,
-        build_threads:       build_threads.to_s,
+        build_threads:       build_threads,
       }
 
       # When developing you may not want to have to commit
@@ -124,9 +124,9 @@ module PlaceOS::Compiler
     release : Bool,
     multithreaded : Bool,
     shards_cache : String?,
-    build_threads : String
+    build_threads : Int32
   ) : ExecFrom::Result
-    arguments = ["build", "--static", "--no-color", "--error-trace", "--threads", build_threads, "-o", executable_path, build_script]
+    arguments = ["build", "--static", "--no-color", "--error-trace", "--threads", build_threads.to_s, "-o", executable_path, build_script]
     arguments.insert(1, "--debug") if debug
     arguments.insert(1, "--release") if release
     arguments.insert(1, "--Dpreview_mt") if multithreaded
