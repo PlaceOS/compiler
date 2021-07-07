@@ -39,7 +39,8 @@ module PlaceOS::Compiler
     debug : Bool = false,
     release : Bool = false,
     multithreaded : Bool = false,
-    shards_cache : String? = nil
+    shards_cache : String? = nil,
+    build_threads : Int32 = 1
   ) : Result::Build
     # Ensure the bin directory exists
     Dir.mkdir_p binary_directory
@@ -77,6 +78,7 @@ module PlaceOS::Compiler
         release:             release,
         multithreaded:       multithreaded,
         shards_cache:        shards_cache,
+        build_threads:       build_threads.to_s,
       }
 
       # When developing you may not want to have to commit
@@ -121,9 +123,10 @@ module PlaceOS::Compiler
     debug : Bool,
     release : Bool,
     multithreaded : Bool,
-    shards_cache : String?
+    shards_cache : String?,
+    build_threads : String
   ) : ExecFrom::Result
-    arguments = ["build", "--static", "--no-color", "--error-trace", "--threads", "1", "-o", executable_path, build_script]
+    arguments = ["build", "--static", "--no-color", "--error-trace", "--threads", build_threads, "-o", executable_path, build_script]
     arguments.insert(1, "--debug") if debug
     arguments.insert(1, "--release") if release
     arguments.insert(1, "--Dpreview_mt") if multithreaded
