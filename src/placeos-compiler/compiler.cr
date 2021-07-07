@@ -123,7 +123,7 @@ module PlaceOS::Compiler
     multithreaded : Bool,
     shards_cache : String?
   ) : ExecFrom::Result
-    arguments = ["build", "--static", "--no-color", "--error-trace", "-o", executable_path, build_script]
+    arguments = ["build", "--static", "--no-color", "--error-trace", "--threads", "1", "-o", executable_path, build_script]
     arguments.insert(1, "--debug") if debug
     arguments.insert(1, "--release") if release
     arguments.insert(1, "--Dpreview_mt") if multithreaded
