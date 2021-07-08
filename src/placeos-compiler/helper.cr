@@ -39,7 +39,7 @@ module PlaceOS::Compiler
 
     # Generates path to a driver executable
     def driver_binary_path(driver_file : String, commit : String, id : String? = nil)
-      File.join(Compiler.bin_dir, driver_binary_name(driver_file, commit, id))
+      File.join(Compiler.binary_dir, driver_binary_name(driver_file, commit, id))
     end
 
     # Generates the name of a driver binary
@@ -69,7 +69,7 @@ module PlaceOS::Compiler
               end
 
       files.each do |file|
-        File.delete(File.join(Compiler.bin_dir, file))
+        File.delete(File.join(Compiler.binary_dir, file))
       end
 
       files

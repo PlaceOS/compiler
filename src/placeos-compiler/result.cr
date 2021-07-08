@@ -1,5 +1,9 @@
+require "json"
+
 module PlaceOS::Compiler
   abstract struct Result
+    include JSON::Serializable
+
     abstract def exit_code : Int32
     abstract def output : String
 
