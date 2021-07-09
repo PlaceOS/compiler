@@ -244,17 +244,16 @@ module PlaceOS::Compiler
   # Generate executable name from driver file path and commit
   # Optionally provide an id.
   def self.executable_name(driver_source : String, commit : String, id : String?)
-    if id.nil?
-      "#{self.driver_slug(driver_source)}_#{commit}"
-    else
-      "#{self.driver_slug(driver_source)}_#{commit}_#{id}"
-    end
+    slug = self.driver_slug(driver_source)
+    parts = id.nil? ? {slug, commit} : {slug, commit, id}
+    parts.join('_')
   end
 
   # Ensure commit is an actual SHA reference
   def self.normalize_commit(commit, source_file, repository, working_directory) : String
+    changed = Git.diff(source_file, repository, working_directory).empty? rescue false
     # Make sure we have an actual version hash of the file
-    if commit == "HEAD" && Git.diff(source_file, repository, working_directory).empty?
+    if commit == "HEAD" && changed
       # Allow uncommited files to be built
       Git.current_file_commit(source_file, repository, working_directory) rescue commit
     else

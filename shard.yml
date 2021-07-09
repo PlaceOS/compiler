@@ -1,5 +1,5 @@
 name: placeos-compiler
-version: 4.3.3
+version: 4.3.4
 crystal: ">= 1.0.0"
 license: MIT
 
