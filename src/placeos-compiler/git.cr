@@ -180,6 +180,7 @@ module PlaceOS::Compiler
       result = repository_lock(repo_dir).write do
         fetch(repository, working_directory)
         _checkout(repo_dir, branch, raises)
+        run_git(repo_dir, {"pull"}, raises)
         _checkout(repo_dir, "HEAD", raises)
       end
 
