@@ -209,6 +209,8 @@ module PlaceOS::Compiler
         repository_uri = uri_builder.to_s
       end
 
+      repository_uri = repository_uri.rchop('/')
+
       # The call to write here ensures that no other operations are occuring on
       # the repository at this time.
       repository_lock(repo_dir).write do
