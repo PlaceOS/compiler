@@ -12,8 +12,8 @@ jobs:
       fail-fast: false
       matrix:
         crystal:
-          - latest
           - nightly
+          - 1.1.0
           - 1.0.0
     steps:
       - uses: actions/checkout@v2
@@ -24,8 +24,7 @@ jobs:
 
   style:
     runs-on: ubuntu-latest
-    container:
-      image: crystallang/crystal
+    container: crystallang/crystal
     strategy:
       fail-fast: false
     steps:
