@@ -56,8 +56,8 @@ module PlaceOS::Compiler
     end
 
     def self.commits(file_name : String | Array(String), repository : String, working_directory : String, count : Int32 = 50) : Array(Commit)
-      base_arguments = {"log", "--format=format:%h%n%cI%n%an%n%s%n<--%n%n-->", "--no-color", "-n", count.to_s, "--"}
-      arguments = base_arguments + (file_name.is_a?(String) ? {file_name} : file_name)
+      base_arguments = ["log", "--format=format:%h%n%cI%n%an%n%s%n<--%n%n-->", "--no-color", "-n", count.to_s, "--"]
+      arguments = base_arguments + (file_name.is_a?(String) ? [file_name] : file_name)
 
       # https://git-scm.com/docs/pretty-formats
       # %h: abbreviated commit hash
@@ -298,6 +298,8 @@ module PlaceOS::Compiler
       raises : Bool = false
     )
       environment["GIT_TERMINAL_PROMPT"] = "0"
+      args = args.to_a if args.is_a? Tuple
+      git_args = git_args.to_a if git_args.is_a? Tuple
       args = git_args + args unless git_args.nil? || git_args.empty?
       ExecFrom.exec_from(path, "git", args, environment: environment).tap do |result|
         raise Error::Git.from_result(args, result) if raises && !result.status.success?
