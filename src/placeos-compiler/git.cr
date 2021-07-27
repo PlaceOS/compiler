@@ -91,6 +91,11 @@ module PlaceOS::Compiler
       repository_commits(repository, working_directory, 1).first.commit
     end
 
+    def self.remote(repository : String, working_directory : String) : String
+      path = repository_path(repository, working_directory)
+      run_git(path, {"config", "--get", "remote.origin.url"}, raises: true).output.to_s.chomp
+    end
+
     def self.branches(repository : String, working_directory : String) : Array(String)
       path = repository_path(repository, working_directory)
       result = Git.repo_operation(path) do
