@@ -127,15 +127,21 @@ module PlaceOS::Compiler
 
     def self.checkout_file(file : String, repository : String, working_directory : String, commit : String = "HEAD", branch : String = "master")
       path = repository_path(repository, working_directory)
-      # https://stackoverflow.com/questions/215718/reset-or-revert-a-specific-file-to-a-specific-revision-using-git
+      current = current_branch(path)
       file_lock(path, file) do
         begin
           _checkout_file(path, file, commit, branch)
           yield file
         ensure
-          # reset the file back to head
-          _checkout_file(path, file, "HEAD", branch)
+          _restore(path, current)
         end
+      end
+    end
+
+    # :nodoc:
+    def self._restore(repository_directory : String, source : String, path : String = ".")
+      operation_lock(repository_directory).synchronize do
+        run_git(repository_directory, {"restore", "--source", source, "--", path}, raises: true)
       end
     end
 
