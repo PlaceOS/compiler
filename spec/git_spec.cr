@@ -72,6 +72,18 @@ module PlaceOS::Compiler
         title = File.open(readme, &.gets('\n'))
         title.should eq(current_title)
       end
+
+      it "will check out a file, then restore to a repo state where it does not exist" do
+        file = "drivers/aca/private_helper.cr"
+        path = File.join(repository_path, file)
+        File.exists?(path).should be_false
+
+        Git.checkout_file(file, repository, working_directory, commit: "9e5c982e2aac06e1e10349fe8352109c138d7f23") do
+          File.exists?(path).should be_true
+        end
+
+        File.exists?(path).should be_false
+      end
     end
   end
 end
