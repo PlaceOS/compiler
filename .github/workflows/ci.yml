@@ -12,9 +12,10 @@ jobs:
       fail-fast: false
       matrix:
         crystal:
-          - nightly
-          - 1.1.0
           - 1.0.0
+          - 1.1.0
+          - 1.1.1
+          - nightly
     steps:
       - uses: actions/checkout@v2
       - name: Test with crystal ${{ matrix.crystal }}

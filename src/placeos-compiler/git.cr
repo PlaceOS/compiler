@@ -65,7 +65,7 @@ module PlaceOS::Compiler
       # %an: author name
       # %s: subject
       path = repository_path(repository, working_directory)
-      result = file_operation(path, file_name) do
+      result = repository_lock(path).read do
         run_git(path, arguments, git_args: {"--no-pager"}, raises: true)
       end
 
@@ -359,18 +359,18 @@ module PlaceOS::Compiler
     # Locks
     ###############################################################################################
 
-    @@lock_manager = Mutex.new
+    @@lock_manager : Mutex = Mutex.new
 
     # Allow multiple file level operations to occur in parrallel
     # File level operations are readers, repo level are writers
-    @@repository_lock = Hash(String, RWLock).new { |h, k| h[k] = RWLock.new }
+    @@repository_lock : Hash(String, RWLock) = Hash(String, RWLock).new { |h, k| h[k] = RWLock.new }
 
     # Ensure only a single git operation is occuring at once to avoid corruption
-    @@operation_lock = Hash(String, Mutex).new { |h, k| h[k] = Mutex.new }
+    @@operation_lock : Hash(String, Mutex) = Hash(String, Mutex).new { |h, k| h[k] = Mutex.new }
 
     # Ensures only a single operation on an individual file occurs at once
     # This enables multi-version compilation to occur without clashing
-    @@file_lock = Hash(String, Hash(String, Mutex)).new do |repository_locks, repository|
+    @@file_lock : Hash(String, Hash(String, Mutex)) = Hash(String, Hash(String, Mutex)).new do |repository_locks, repository|
       repository_locks[repository] = Hash(String, Mutex).new do |file_locks, file|
         file_locks[file] = Mutex.new(:reentrant)
       end
