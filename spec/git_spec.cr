@@ -29,6 +29,23 @@ module PlaceOS::Compiler
       changes.map(&.subject).includes?("simplify dependencies").should be_true
     end
 
+    describe "remote url" do
+      it ".get_remote_url" do
+        Git.get_remote_url(repository, working_directory).should eq URI.parse("https://github.com/placeos/private-drivers.git")
+      end
+
+      it ".set_remote_url" do
+        existing_remote = Git.get_remote_url(repository, working_directory)
+        new_remote = URI.parse("https://github.com/this-repo/doesnt-exist.git")
+        begin
+          Git.set_remote_url(repository, new_remote, working_directory)
+          Git.get_remote_url(repository, working_directory).should eq new_remote
+        ensure
+          Git.set_remote_url(repository, existing_remote, working_directory)
+        end
+      end
+    end
+
     describe ".branches" do
       it "lists branches" do
         branches = Git.branches(repository, working_directory)
