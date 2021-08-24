@@ -201,6 +201,31 @@ module PlaceOS::Compiler
       )
     end
 
+    def self.get_remote_url(
+      repository : String,
+      working_directory : String,
+      raises : Bool = true
+    ) : URI
+      repo_dir = repository_path(repository, working_directory)
+      uri = basic_operation(repo_dir) do
+        run_git(repo_dir, {"remote", "get-url", "origin"}, raises: raises)
+      end.output.to_s.strip
+      URI.parse(uri)
+    end
+
+    def self.set_remote_url(
+      repository : String,
+      repository_uri : String | URI,
+      working_directory : String,
+      raises : Bool = true
+    )
+      repo_dir = repository_path(repository, working_directory)
+      repository_uri = repository_uri.to_s if repository_uri.is_a? URI
+      repository_lock(repo_dir).write do
+        run_git(repo_dir, {"remote", "set-url", "origin", repository_uri}, raises: raises)
+      end
+    end
+
     def self.clone(
       repository : String,
       repository_uri : String,
@@ -237,6 +262,17 @@ module PlaceOS::Compiler
         rescue e : Error::Git
           Log.warn(exception: e) { "failed to query current branch from #{repository}, proceeding with clone" }
           nil
+        end
+
+        # Check the existing credentials (if any) are correct
+        unless current.nil?
+          uri = get_remote_url(repository, working_directory)
+          unless uri.password == password && uri.user == username
+            # Update the remote if the credentials do not match
+            uri.user = username
+            uri.password = password
+            set_remote_url(repository, uri, working_directory)
+          end
         end
 
         if current

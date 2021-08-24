@@ -12,7 +12,7 @@ Spec.before_suite do
   # Clone the private drivers
   PlaceOS::Compiler.clone_and_install(
     "private_drivers",
-    "https://github.com/placeos/private-drivers"
+    "https://github.com/placeos/private-drivers.git"
   )
 end
 
