@@ -24,7 +24,7 @@ module PlaceOS::Compiler
       include JSON::Serializable
     end
 
-    def self.repository_commits(repository : String, working_directory : String, count : Int32 = 50) : Array(Commit)
+    def self.repository_commits(repository : String, working_directory : String, count : Int32 = 50, branch : String = "master") : Array(Commit)
       path = repository_path(repository, working_directory)
       # https://git-scm.com/docs/pretty-formats
       # %h: abbreviated commit hash
@@ -34,34 +34,28 @@ module PlaceOS::Compiler
       result = repository_lock(path).write do
         run_git(
           path,
-          {"log", "--format=format:%H%n%cI%n%an%n%s%n<--%n%n-->", "--no-color", "-n", count.to_s},
+          {
+            "log",
+            "--format=format:%H%n%cI%n%an%n%s%n<--%n%n-->",
+            "--no-color",
+            "-n", count.to_s,
+            "refs/heads/#{branch}",
+          },
           git_args: {"--no-pager"},
           raises: true
         )
       end
 
-      result
-        .output.to_s
-        .strip.split("<--\n\n-->")
-        .reject(&.empty?)
-        .map do |line|
-          commit = line.strip.split("\n").map(&.strip)
-          Commit.new(
-            commit: commit[0],
-            date: commit[1],
-            author: commit[2],
-            subject: commit[3],
-          )
-        end
+      parse_commit_log(result.output)
     end
 
-    def self.commits(file_name : String | Array(String), repository : String, working_directory : String, count : Int32 = 50) : Array(Commit)
+    def self.commits(file_name : String | Array(String), repository : String, working_directory : String, count : Int32 = 50, branch : String = "master") : Array(Commit)
       base_arguments = [
         "log",
-        "--format=format:%h%n%cI%n%an%n%s%n<--%n%n-->",
+        "--format=format:%H%n%cI%n%an%n%s%n<--%n%n-->",
         "--no-color",
         "-n", count.to_s,
-        "origin",
+        "refs/heads/#{branch}",
         "--",
       ]
       arguments = base_arguments + (file_name.is_a?(String) ? [file_name] : file_name)
@@ -76,8 +70,13 @@ module PlaceOS::Compiler
         run_git(path, arguments, git_args: {"--no-pager"}, raises: true)
       end
 
-      result
-        .output.to_s.strip.split("<--\n\n-->")
+      parse_commit_log(result.output)
+    end
+
+    protected def self.parse_commit_log(io)
+      io
+        .to_s
+        .strip.split("<--\n\n-->")
         .reject(&.empty?)
         .map do |line|
           commit = line.strip.split("\n").map(&.strip)
