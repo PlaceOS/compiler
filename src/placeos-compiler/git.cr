@@ -24,6 +24,8 @@ module PlaceOS::Compiler
       include JSON::Serializable
     end
 
+    private LOG_FORMAT = "format:%H%n%cI%n%an%n%s%n<--%n%n-->"
+
     def self.repository_commits(repository : String, working_directory : String, count : Int32 = 50, branch : String = "master") : Array(Commit)
       path = repository_path(repository, working_directory)
       # https://git-scm.com/docs/pretty-formats
@@ -32,14 +34,15 @@ module PlaceOS::Compiler
       # %an: author name
       # %s: subject
       result = repository_lock(path).write do
+        run_git(path, {"fetch", "--all"})
         run_git(
           path,
           {
             "log",
-            "--format=format:%H%n%cI%n%an%n%s%n<--%n%n-->",
+            "--format=#{LOG_FORMAT}",
             "--no-color",
             "-n", count.to_s,
-            "refs/heads/#{branch}",
+            "origin/#{branch}",
           },
           git_args: {"--no-pager"},
           raises: true
@@ -52,10 +55,10 @@ module PlaceOS::Compiler
     def self.commits(file_name : String | Array(String), repository : String, working_directory : String, count : Int32 = 50, branch : String = "master") : Array(Commit)
       base_arguments = [
         "log",
-        "--format=format:%H%n%cI%n%an%n%s%n<--%n%n-->",
+        "--format=#{LOG_FORMAT}",
         "--no-color",
         "-n", count.to_s,
-        "refs/heads/#{branch}",
+        "origin/#{branch}",
         "--",
       ]
       arguments = base_arguments + (file_name.is_a?(String) ? [file_name] : file_name)
@@ -67,6 +70,7 @@ module PlaceOS::Compiler
       # %s: subject
       path = repository_path(repository, working_directory)
       result = file_operation(path, file_name) do
+        run_git(path, {"fetch", "--all"})
         run_git(path, arguments, git_args: {"--no-pager"}, raises: true)
       end
 
