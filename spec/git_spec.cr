@@ -17,16 +17,54 @@ module PlaceOS::Compiler
       files.includes?("shard.yml").should be_true
     end
 
-    it "should list the revisions to a file in a repository" do
-      changes = Git.commits("shard.yml", repository, working_directory, 200)
-      changes.should_not be_empty
-      changes.map(&.subject).includes?("simplify dependencies").should be_true
+    describe ".commits" do
+      it "lists the revisions of a file in a repository" do
+        changes = Git.commits("shard.yml", repository, working_directory, 200)
+        changes.should_not be_empty
+        changes.map(&.subject).should contain("simplify dependencies")
+      end
+
+      it "fetches entire commit history of a file on a branch" do
+        repository = "compiler"
+        repository_uri = "https://github.com/placeos/compiler"
+        branch = "test-fixture"
+        checked_out_commit = "f7c6d8fb810c2be78722249e06bbfbda3d30d355"
+        expected_commit = "d37c34a49c96a2559408468b2b9458867cbf1329"
+        repository_directory = File.join(working_directory, repository)
+        Git.clone(
+          repository: repository,
+          repository_uri: repository_uri,
+          working_directory: working_directory,
+        )
+        Git._checkout(repository_directory, checked_out_commit)
+        changes = Git.commits("README.md", repository, working_directory, 200, branch)
+        changes.map(&.commit).should contain(expected_commit)
+      end
     end
 
-    it "should list the revisions of a repository" do
-      changes = Git.repository_commits(repository, working_directory, 200)
-      changes.should_not be_empty
-      changes.map(&.subject).includes?("simplify dependencies").should be_true
+    describe ".repository_commits" do
+      it "lists the revisions of a repository" do
+        changes = Git.repository_commits(repository, working_directory, 200)
+        changes.should_not be_empty
+        changes.map(&.subject).includes?("simplify dependencies").should be_true
+      end
+
+      it "fetches entire commit history of a branch" do
+        repository = "compiler"
+        repository_uri = "https://github.com/placeos/compiler"
+        branch = "test-fixture"
+        checked_out_commit = "f7c6d8fb810c2be78722249e06bbfbda3d30d355"
+        expected_commit = "d37c34a49c96a2559408468b2b9458867cbf1329"
+        repository_directory = File.join(working_directory, repository)
+        Git.clone(
+          repository: repository,
+          repository_uri: repository_uri,
+          working_directory: working_directory,
+        )
+        Git._checkout(repository_directory, checked_out_commit)
+        changes = Git.repository_commits(repository, working_directory, 200, branch)
+        changes.map(&.commit).should contain(expected_commit)
+      end
     end
 
     describe "remote url" do
