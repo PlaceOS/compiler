@@ -25,19 +25,19 @@ module PlaceOS::Compiler
       end
 
       it "fetches entire commit history of a file on a branch" do
-        repository = "compiler"
-        repository_uri = "https://github.com/placeos/compiler"
+        repo = "compiler"
+        repo_uri = "https://github.com/placeos/compiler"
         branch = "test-fixture"
         checked_out_commit = "f7c6d8fb810c2be78722249e06bbfbda3d30d355"
         expected_commit = "d37c34a49c96a2559408468b2b9458867cbf1329"
-        repository_directory = File.join(working_directory, repository)
+        repository_directory = File.join(working_directory, repo)
         Git.clone(
-          repository: repository,
-          repository_uri: repository_uri,
+          repository: repo,
+          repository_uri: repo_uri,
           working_directory: working_directory,
         )
         Git._checkout(repository_directory, checked_out_commit)
-        changes = Git.commits("README.md", repository, working_directory, 200, branch)
+        changes = Git.commits("README.md", repo, working_directory, 200, branch)
         changes.map(&.commit).should contain(expected_commit)
       end
     end
@@ -50,19 +50,19 @@ module PlaceOS::Compiler
       end
 
       it "fetches entire commit history of a branch" do
-        repository = "compiler"
-        repository_uri = "https://github.com/placeos/compiler"
+        repo = "compiler"
+        repo_uri = "https://github.com/placeos/compiler"
         branch = "test-fixture"
         checked_out_commit = "f7c6d8fb810c2be78722249e06bbfbda3d30d355"
         expected_commit = "d37c34a49c96a2559408468b2b9458867cbf1329"
-        repository_directory = File.join(working_directory, repository)
+        repository_directory = File.join(working_directory, repo)
         Git.clone(
-          repository: repository,
-          repository_uri: repository_uri,
+          repository: repo,
+          repository_uri: repo_uri,
           working_directory: working_directory,
         )
         Git._checkout(repository_directory, checked_out_commit)
-        changes = Git.repository_commits(repository, working_directory, 200, branch)
+        changes = Git.repository_commits(repo, working_directory, 200, branch)
         changes.map(&.commit).should contain(expected_commit)
       end
     end
