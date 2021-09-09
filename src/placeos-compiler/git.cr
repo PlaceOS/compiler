@@ -24,44 +24,37 @@ module PlaceOS::Compiler
       include JSON::Serializable
     end
 
-    private LOG_FORMAT = "format:%H%n%cI%n%an%n%s%n<--%n%n-->"
-
-    def self.repository_commits(repository : String, working_directory : String, count : Int32 = 50, branch : String = "master") : Array(Commit)
-      path = repository_path(repository, working_directory)
-      # https://git-scm.com/docs/pretty-formats
-      # %h: abbreviated commit hash
-      # %cI: committer date, strict ISO 8601 format
-      # %an: author name
-      # %s: subject
-      result = repository_lock(path).read do
-        run_git(path, {"fetch", "--all"})
-        run_git(
-          path,
-          {
-            "log",
-            "--format=#{LOG_FORMAT}",
-            "--no-color",
-            "-n", count.to_s,
-            "origin/#{branch}",
-          },
-          git_args: {"--no-pager"},
-          raises: true
-        )
-      end
-
-      parse_commit_log(result.output)
+    def self.repository_commits(repository : String, working_directory : String, count : Int32 = 50, branch : String? = "master") : Array(Commit)
+      _commits(nil, repository, working_directory, count, branch)
     end
 
-    def self.commits(file_name : String | Array(String), repository : String, working_directory : String, count : Int32 = 50, branch : String = "master") : Array(Commit)
-      base_arguments = [
+    def self.commits(file_name : String | Array(String), repository : String, working_directory : String, count : Int32 = 50, branch : String? = "master") : Array(Commit)
+      _commits(file_name, repository, working_directory, count, branch)
+    end
+
+    private LOG_FORMAT = "format:%H%n%cI%n%an%n%s%n<--%n%n-->"
+
+    protected def self._commits(file_name : String | Array(String) | Nil, repository : String, working_directory : String, count : Int32 = 50, branch : String? = "master")
+      arguments = [
         "log",
         "--format=#{LOG_FORMAT}",
         "--no-color",
         "-n", count.to_s,
-        "origin/#{branch}",
-        "--",
       ]
-      arguments = base_arguments + (file_name.is_a?(String) ? [file_name] : file_name)
+
+      # If the branch is included, the up-to-date commit lists of the branch is fetched
+      # Otherwise, commits from the current checked out commit are returned
+      arguments << "origin/#{branch}" unless branch.nil?
+
+      case file_name
+      in String
+        arguments << "--"
+        arguments << file_name
+      in Array(String)
+        arguments << "--"
+        arguments.concat(file_name)
+      in Nil
+      end
 
       # https://git-scm.com/docs/pretty-formats
       # %h: abbreviated commit hash
@@ -74,15 +67,11 @@ module PlaceOS::Compiler
         run_git(path, arguments, git_args: {"--no-pager"}, raises: true)
       end
 
-      parse_commit_log(result.output)
-    end
-
-    protected def self.parse_commit_log(io)
-      io
-        .to_s
-        .strip.split("<--\n\n-->")
+      result
+        .output.tap(&.rewind)
+        .each_line("<--\n\n-->")
         .reject(&.empty?)
-        .map do |line|
+        .map { |line|
           commit = line.strip.split("\n").map(&.strip)
           Commit.new(
             commit: commit[0],
@@ -90,15 +79,17 @@ module PlaceOS::Compiler
             author: commit[2],
             subject: commit[3]
           )
-        end
+        }.to_a
     end
 
     def self.current_file_commit(file_name : String, repository : String, working_directory : String) : String
-      commits(file_name, repository, working_directory, 1).first.commit
+      # Branch is `nil` as we want commits from the _current_ repo state
+      commits(file_name, repository, working_directory, 1, branch: nil).first.commit
     end
 
     def self.current_repository_commit(repository : String, working_directory : String) : String
-      repository_commits(repository, working_directory, 1).first.commit
+      # Branch is `nil` as we want commits from the _current_ repo state
+      repository_commits(repository, working_directory, 1, branch: nil).first.commit
     end
 
     def self.remote(repository : String, working_directory : String) : String
@@ -114,10 +105,10 @@ module PlaceOS::Compiler
       end
 
       result
-        .output
-        .to_s
-        .lines
+        .output.tap(&.rewind)
+        .each_line
         .compact_map { |l| l.strip.lchop("origin/") unless l =~ /HEAD/ }
+        .to_a
         .sort!
         .uniq!
     end
@@ -159,23 +150,30 @@ module PlaceOS::Compiler
     # Checkout a file relative to a repository
     def self._checkout_file(repository_directory : String, file : String, commit : String, branch : String)
       operation_lock(repository_directory).synchronize do
-        run_git(repository_directory, {"checkout", branch}, raises: true)
+        run_git(repository_directory, {"checkout", "--force", branch}, raises: true)
         run_git(repository_directory, {"checkout", commit, "--", file}, raises: true)
       end
     end
 
     # :nodoc:
-    # Checkout a repository to a commit
-    def self._checkout(repository_directory : String, commit : String, raises : Bool = true)
+    # Checkout a repository to a reference
+    def self._checkout(
+      repository_directory : String,
+      reference : String,
+      raises : Bool = true,
+      force : Bool = false
+    )
+      arguments = ["checkout", reference]
+      arguments << "--force" if force
       operation_lock(repository_directory).synchronize do
-        run_git(repository_directory, {"checkout", commit}, raises: raises)
+        run_git(repository_directory, arguments, raises: raises)
       end
     end
 
     def self.checkout_branch(branch : String, repository : String, working_directory : String)
       path = repository_path(repository, working_directory)
       result = repo_operation(path) do
-        run_git(path, {"checkout", branch}, raises: true)
+        run_git(path, {"checkout", "--force", branch}, raises: true)
       end
       result.output.to_s.strip
     end
@@ -200,9 +198,9 @@ module PlaceOS::Compiler
       # the repository at this time.
       result = repository_lock(repo_dir).write do
         fetch(repository, working_directory)
-        _checkout(repo_dir, branch, raises)
+        _checkout(repo_dir, branch, raises: raises, force: true)
         run_git(repo_dir, {"pull"}, raises: raises)
-        _checkout(repo_dir, "HEAD", raises)
+        _checkout(repo_dir, "HEAD", raises: raises)
       end
 
       Result::Command.new(

@@ -3,10 +3,17 @@ require "yaml"
 
 module PlaceOS::Compiler
   describe Git do
-    repository = "private_drivers"
     working_directory = Compiler.repository_dir
+    repository = "private_drivers"
     repository_path = Git.repository_path(repository, working_directory)
     readme = File.join(repository_path, "README.md")
+
+    before_each do
+      repository = "private_drivers"
+      working_directory = Compiler.repository_dir
+      repository_path = Git.repository_path(repository, working_directory)
+      Git._checkout(repository_path, "master", force: true) if Dir.exists? repository_path
+    end
 
     current_title = "# Private PlaceOS Drivers\n"
     old_title = "# Private Engine Drivers\n"
@@ -25,19 +32,19 @@ module PlaceOS::Compiler
       end
 
       it "fetches entire commit history of a file on a branch" do
-        repo = "compiler"
-        repo_uri = "https://github.com/placeos/compiler"
+        repository = "compiler"
+        repository_uri = "https://github.com/placeos/compiler"
         branch = "test-fixture"
         checked_out_commit = "f7c6d8fb810c2be78722249e06bbfbda3d30d355"
         expected_commit = "d37c34a49c96a2559408468b2b9458867cbf1329"
-        repository_directory = File.join(working_directory, repo)
+        repository_path = File.join(working_directory, repository)
         Git.clone(
-          repository: repo,
-          repository_uri: repo_uri,
+          repository: repository,
+          repository_uri: repository_uri,
           working_directory: working_directory,
         )
-        Git._checkout(repository_directory, checked_out_commit)
-        changes = Git.commits("README.md", repo, working_directory, 200, branch)
+        Git._checkout(repository_path, checked_out_commit)
+        changes = Git.commits("README.md", repository, working_directory, 200, branch)
         changes.map(&.commit).should contain(expected_commit)
       end
     end
@@ -50,19 +57,15 @@ module PlaceOS::Compiler
       end
 
       it "fetches entire commit history of a branch" do
-        repo = "compiler"
-        repo_uri = "https://github.com/placeos/compiler"
+        repository = "compiler"
+        repository_uri = "https://github.com/placeos/compiler"
         branch = "test-fixture"
         checked_out_commit = "f7c6d8fb810c2be78722249e06bbfbda3d30d355"
         expected_commit = "d37c34a49c96a2559408468b2b9458867cbf1329"
-        repository_directory = File.join(working_directory, repo)
-        Git.clone(
-          repository: repo,
-          repository_uri: repo_uri,
-          working_directory: working_directory,
-        )
-        Git._checkout(repository_directory, checked_out_commit)
-        changes = Git.repository_commits(repo, working_directory, 200, branch)
+        repository_path = File.join(working_directory, repository)
+        Git.clone(repository: repository, repository_uri: repository_uri, working_directory: working_directory)
+        Git._checkout(repository_path, checked_out_commit)
+        changes = Git.repository_commits(repository, working_directory, 200, branch)
         changes.map(&.commit).should contain(expected_commit)
       end
     end
@@ -81,6 +84,24 @@ module PlaceOS::Compiler
         ensure
           Git.set_remote_url(repository, existing_remote, working_directory)
         end
+      end
+    end
+
+    describe ".current_repository_commit" do
+      it "fetches checked out commit of repo" do
+        expected_commit = "0bcfa6e4a9ad832fadf799f15f269608d61086a7"
+        Git._checkout(repository_path, expected_commit)
+        Git.current_repository_commit(repository, working_directory).should eq expected_commit
+      end
+    end
+
+    describe ".current_file_commit" do
+      it "fetches checked out commit of file" do
+        file = "README.md"
+        checked_out_commit = "fe335884cbb8d7bc843d33fa7b97d7a306b35208"
+        expected_commit = "121a3593dbf1b83373d11e8ff8f1150c14e67fe9"
+        Git._checkout(repository_path, checked_out_commit)
+        Git.current_file_commit(file, repository, working_directory).should eq expected_commit
       end
     end
 
