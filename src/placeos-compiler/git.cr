@@ -67,15 +67,11 @@ module PlaceOS::Compiler
         run_git(path, arguments, git_args: {"--no-pager"}, raises: true)
       end
 
-      parse_commit_log(result.output)
-    end
-
-    protected def self.parse_commit_log(io)
-      io
-        .to_s
-        .strip.split("<--\n\n-->")
+      result
+        .output.tap(&.rewind)
+        .each_line("<--\n\n-->")
         .reject(&.empty?)
-        .map do |line|
+        .map { |line|
           commit = line.strip.split("\n").map(&.strip)
           Commit.new(
             commit: commit[0],
@@ -83,7 +79,7 @@ module PlaceOS::Compiler
             author: commit[2],
             subject: commit[3]
           )
-        end
+        }.to_a
     end
 
     def self.current_file_commit(file_name : String, repository : String, working_directory : String) : String
@@ -109,10 +105,10 @@ module PlaceOS::Compiler
       end
 
       result
-        .output
-        .to_s
-        .lines
+        .output.tap(&.rewind)
+        .each_line
         .compact_map { |l| l.strip.lchop("origin/") unless l =~ /HEAD/ }
+        .to_a
         .sort!
         .uniq!
     end
