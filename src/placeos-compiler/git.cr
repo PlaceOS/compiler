@@ -33,7 +33,7 @@ module PlaceOS::Compiler
       # %cI: committer date, strict ISO 8601 format
       # %an: author name
       # %s: subject
-      result = repository_lock(path).write do
+      result = repository_lock(path).read do
         run_git(path, {"fetch", "--all"})
         run_git(
           path,
@@ -69,7 +69,7 @@ module PlaceOS::Compiler
       # %an: author name
       # %s: subject
       path = repository_path(repository, working_directory)
-      result = file_operation(path, file_name) do
+      result = repository_lock(path).read do
         run_git(path, {"fetch", "--all"})
         run_git(path, arguments, git_args: {"--no-pager"}, raises: true)
       end
