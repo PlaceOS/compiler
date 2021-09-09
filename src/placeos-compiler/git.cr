@@ -24,44 +24,37 @@ module PlaceOS::Compiler
       include JSON::Serializable
     end
 
-    private LOG_FORMAT = "format:%H%n%cI%n%an%n%s%n<--%n%n-->"
-
-    def self.repository_commits(repository : String, working_directory : String, count : Int32 = 50, branch : String = "master") : Array(Commit)
-      path = repository_path(repository, working_directory)
-      # https://git-scm.com/docs/pretty-formats
-      # %h: abbreviated commit hash
-      # %cI: committer date, strict ISO 8601 format
-      # %an: author name
-      # %s: subject
-      result = repository_lock(path).read do
-        run_git(path, {"fetch", "--all"})
-        run_git(
-          path,
-          {
-            "log",
-            "--format=#{LOG_FORMAT}",
-            "--no-color",
-            "-n", count.to_s,
-            "origin/#{branch}",
-          },
-          git_args: {"--no-pager"},
-          raises: true
-        )
-      end
-
-      parse_commit_log(result.output)
+    def self.repository_commits(repository : String, working_directory : String, count : Int32 = 50, branch : String? = "master") : Array(Commit)
+      _commits(nil, repository, working_directory, count, branch)
     end
 
-    def self.commits(file_name : String | Array(String), repository : String, working_directory : String, count : Int32 = 50, branch : String = "master") : Array(Commit)
-      base_arguments = [
+    def self.commits(file_name : String | Array(String), repository : String, working_directory : String, count : Int32 = 50, branch : String? = "master") : Array(Commit)
+      _commits(file_name, repository, working_directory, count, branch)
+    end
+
+    private LOG_FORMAT = "format:%H%n%cI%n%an%n%s%n<--%n%n-->"
+
+    protected def self._commits(file_name : String | Array(String) | Nil, repository : String, working_directory : String, count : Int32 = 50, branch : String? = "master")
+      arguments = [
         "log",
         "--format=#{LOG_FORMAT}",
         "--no-color",
         "-n", count.to_s,
-        "origin/#{branch}",
-        "--",
       ]
-      arguments = base_arguments + (file_name.is_a?(String) ? [file_name] : file_name)
+
+      # If the branch is included, the up-to-date commit lists of the branch is fetched
+      # Otherwise, commits from the current checked out commit are returned
+      arguments << "origin/#{branch}" unless branch.nil?
+
+      case file_name
+      in String
+        arguments << "--"
+        arguments << file_name
+      in Array(String)
+        arguments << "--"
+        arguments.concat(file_name)
+      in Nil
+      end
 
       # https://git-scm.com/docs/pretty-formats
       # %h: abbreviated commit hash
@@ -94,11 +87,13 @@ module PlaceOS::Compiler
     end
 
     def self.current_file_commit(file_name : String, repository : String, working_directory : String) : String
-      commits(file_name, repository, working_directory, 1).first.commit
+      # Branch is `nil` as we want commits from the _current_ repo state
+      commits(file_name, repository, working_directory, 1, branch: nil).first.commit
     end
 
     def self.current_repository_commit(repository : String, working_directory : String) : String
-      repository_commits(repository, working_directory, 1).first.commit
+      # Branch is `nil` as we want commits from the _current_ repo state
+      repository_commits(repository, working_directory, 1, branch: nil).first.commit
     end
 
     def self.remote(repository : String, working_directory : String) : String

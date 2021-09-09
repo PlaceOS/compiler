@@ -84,6 +84,24 @@ module PlaceOS::Compiler
       end
     end
 
+    describe ".current_repository_commit" do
+      it "fetches checked out commit of repo" do
+        expected_commit = "0bcfa6e4a9ad832fadf799f15f269608d61086a7"
+        path = File.join(working_directory, repository)
+        Git._checkout(path, expected_commit)
+        Git.current_repository_commit(repository, working_directory).should eq expected_commit
+      end
+    end
+    describe ".current_file_commit" do
+      it "fetches checked out commit of file" do
+        file = "README.md"
+        expected_commit = "0bcfa6e4a9ad832fadf799f15f269608d61086a7"
+        Git.checkout_file(file, repository, working_directory, commit: expected_commit) do
+          Git.current_file_commit(file, repository, working_directory).should eq expected_commit
+        end
+      end
+    end
+
     describe ".branches" do
       it "lists branches" do
         branches = Git.branches(repository, working_directory)
