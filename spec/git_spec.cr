@@ -8,6 +8,12 @@ module PlaceOS::Compiler
     repository_path = Git.repository_path(repository, working_directory)
     readme = File.join(repository_path, "README.md")
 
+    before_each do
+      if Dir.exists? repository_path
+        Git._restore(repository_path, "master")
+      end
+    end
+
     current_title = "# Private PlaceOS Drivers\n"
     old_title = "# Private Engine Drivers\n"
 
