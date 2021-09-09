@@ -87,18 +87,18 @@ module PlaceOS::Compiler
     describe ".current_repository_commit" do
       it "fetches checked out commit of repo" do
         expected_commit = "0bcfa6e4a9ad832fadf799f15f269608d61086a7"
-        path = File.join(working_directory, repository)
-        Git._checkout(path, expected_commit)
+        Git._checkout(repository_path, expected_commit)
         Git.current_repository_commit(repository, working_directory).should eq expected_commit
       end
     end
+
     describe ".current_file_commit" do
       it "fetches checked out commit of file" do
         file = "README.md"
-        expected_commit = "0bcfa6e4a9ad832fadf799f15f269608d61086a7"
-        Git.checkout_file(file, repository, working_directory, commit: expected_commit) do
-          Git.current_file_commit(file, repository, working_directory).should eq expected_commit
-        end
+        checked_out_commit = "fe335884cbb8d7bc843d33fa7b97d7a306b35208"
+        expected_commit = "121a3593dbf1b83373d11e8ff8f1150c14e67fe9"
+        Git._checkout(repository_path, checked_out_commit)
+        Git.current_file_commit(file, repository, working_directory).should eq expected_commit
       end
     end
 
@@ -149,7 +149,7 @@ module PlaceOS::Compiler
       it "will check out a file, then restore to a repo state where it does not exist" do
         file = "drivers/aca/private_helper.cr"
         path = File.join(repository_path, file)
-        File.exists?(path).should be_false
+        File.exists?(repository_path).should be_false
 
         Git.checkout_file(file, repository, working_directory, commit: "9e5c982e2aac06e1e10349fe8352109c138d7f23") do
           File.exists?(path).should be_true
