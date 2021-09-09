@@ -3,15 +3,16 @@ require "yaml"
 
 module PlaceOS::Compiler
   describe Git do
-    repository = "private_drivers"
     working_directory = Compiler.repository_dir
+    repository = "private_drivers"
     repository_path = Git.repository_path(repository, working_directory)
     readme = File.join(repository_path, "README.md")
 
     before_each do
-      if Dir.exists? repository_path
-        Git._restore(repository_path, "master")
-      end
+      repository = "private_drivers"
+      working_directory = Compiler.repository_dir
+      repository_path = Git.repository_path(repository, working_directory)
+      Git._checkout(repository_path, "master", force: true) if Dir.exists? repository_path
     end
 
     current_title = "# Private PlaceOS Drivers\n"
@@ -31,19 +32,19 @@ module PlaceOS::Compiler
       end
 
       it "fetches entire commit history of a file on a branch" do
-        repo = "compiler"
-        repo_uri = "https://github.com/placeos/compiler"
+        repository = "compiler"
+        repository_uri = "https://github.com/placeos/compiler"
         branch = "test-fixture"
         checked_out_commit = "f7c6d8fb810c2be78722249e06bbfbda3d30d355"
         expected_commit = "d37c34a49c96a2559408468b2b9458867cbf1329"
-        repository_directory = File.join(working_directory, repo)
+        repository_path = File.join(working_directory, repository)
         Git.clone(
-          repository: repo,
-          repository_uri: repo_uri,
+          repository: repository,
+          repository_uri: repository_uri,
           working_directory: working_directory,
         )
-        Git._checkout(repository_directory, checked_out_commit)
-        changes = Git.commits("README.md", repo, working_directory, 200, branch)
+        Git._checkout(repository_path, checked_out_commit)
+        changes = Git.commits("README.md", repository, working_directory, 200, branch)
         changes.map(&.commit).should contain(expected_commit)
       end
     end
@@ -56,19 +57,15 @@ module PlaceOS::Compiler
       end
 
       it "fetches entire commit history of a branch" do
-        repo = "compiler"
-        repo_uri = "https://github.com/placeos/compiler"
+        repository = "compiler"
+        repository_uri = "https://github.com/placeos/compiler"
         branch = "test-fixture"
         checked_out_commit = "f7c6d8fb810c2be78722249e06bbfbda3d30d355"
         expected_commit = "d37c34a49c96a2559408468b2b9458867cbf1329"
-        repository_directory = File.join(working_directory, repo)
-        Git.clone(
-          repository: repo,
-          repository_uri: repo_uri,
-          working_directory: working_directory,
-        )
-        Git._checkout(repository_directory, checked_out_commit)
-        changes = Git.repository_commits(repo, working_directory, 200, branch)
+        repository_path = File.join(working_directory, repository)
+        Git.clone(repository: repository, repository_uri: repository_uri, working_directory: working_directory)
+        Git._checkout(repository_path, checked_out_commit)
+        changes = Git.repository_commits(repository, working_directory, 200, branch)
         changes.map(&.commit).should contain(expected_commit)
       end
     end

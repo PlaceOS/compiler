@@ -150,23 +150,30 @@ module PlaceOS::Compiler
     # Checkout a file relative to a repository
     def self._checkout_file(repository_directory : String, file : String, commit : String, branch : String)
       operation_lock(repository_directory).synchronize do
-        run_git(repository_directory, {"checkout", branch}, raises: true)
+        run_git(repository_directory, {"checkout", "--force", branch}, raises: true)
         run_git(repository_directory, {"checkout", commit, "--", file}, raises: true)
       end
     end
 
     # :nodoc:
-    # Checkout a repository to a commit
-    def self._checkout(repository_directory : String, commit : String, raises : Bool = true)
+    # Checkout a repository to a reference
+    def self._checkout(
+      repository_directory : String,
+      reference : String,
+      raises : Bool = true,
+      force : Bool = false
+    )
+      arguments = ["checkout", reference]
+      arguments << "--force" if force
       operation_lock(repository_directory).synchronize do
-        run_git(repository_directory, {"checkout", commit}, raises: raises)
+        run_git(repository_directory, arguments, raises: raises)
       end
     end
 
     def self.checkout_branch(branch : String, repository : String, working_directory : String)
       path = repository_path(repository, working_directory)
       result = repo_operation(path) do
-        run_git(path, {"checkout", branch}, raises: true)
+        run_git(path, {"checkout", "--force", branch}, raises: true)
       end
       result.output.to_s.strip
     end
@@ -191,9 +198,9 @@ module PlaceOS::Compiler
       # the repository at this time.
       result = repository_lock(repo_dir).write do
         fetch(repository, working_directory)
-        _checkout(repo_dir, branch, raises)
+        _checkout(repo_dir, branch, raises: raises, force: true)
         run_git(repo_dir, {"pull"}, raises: raises)
-        _checkout(repo_dir, "HEAD", raises)
+        _checkout(repo_dir, "HEAD", raises: raises)
       end
 
       Result::Command.new(
