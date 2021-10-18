@@ -1,4 +1,5 @@
 require "exec_from"
+require "file_utils"
 require "rwlock"
 require "uri"
 
