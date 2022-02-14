@@ -1,12 +1,12 @@
 name: placeos-compiler
-version: 4.8.2
+version: 4.8.3
 crystal: ">= 1.0.0"
 license: MIT
 
 dependencies:
   placeos-driver:
     github: placeos/driver
-    version: >= 5.0
+    version: ">= 5.0.0"
 
   exec_from:
     github: place-labs/exec_from
