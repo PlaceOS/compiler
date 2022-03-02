@@ -17,7 +17,7 @@ jobs:
           - 1.1.1
           - nightly
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Test with crystal ${{ matrix.crystal }}
         run: ./test
         env:
@@ -29,7 +29,7 @@ jobs:
     strategy:
       fail-fast: false
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Format
         run: crystal tool format --check
       - name: Lint
