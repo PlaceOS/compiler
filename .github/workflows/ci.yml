@@ -6,33 +6,10 @@ on:
     - cron: "0 6 * * 1"
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        crystal:
-          - 1.0.0
-          - 1.1.0
-          - 1.1.1
-          - nightly
-    steps:
-      - uses: actions/checkout@v3
-      - name: Test with crystal ${{ matrix.crystal }}
-        run: ./test
-        env:
-          CRYSTAL_VERSION: ${{ matrix.crystal }}
-
   style:
-    runs-on: ubuntu-latest
-    container: crystallang/crystal
-    strategy:
-      fail-fast: false
-    steps:
-      - uses: actions/checkout@v3
-      - name: Format
-        run: crystal tool format --check
-      - name: Lint
-        uses: crystal-ameba/github-action@v0.2.12
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    uses: PlaceOS/.github/.github/workflows/crystal-style.yml@main
+
+  test:
+    uses: PlaceOS/.github/.github/workflows/containerised-test.yml@main
+    with:
+      cache_shards: false
