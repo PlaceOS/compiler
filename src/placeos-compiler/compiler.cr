@@ -132,17 +132,21 @@ module PlaceOS::Compiler
     arguments.insert(1, "--Dpreview_mt") if multithreaded
 
     check_crystal!(crystal_binary_path)
+    env = {
+      "COMPILE_DRIVER" => source_file,
+      "DEBUG"          => debug ? "1" : "0",
+    }
+    if crystal_path = ENV["CRYSTAL_PATH"]?.presence
+      env["CRYSTAL_PATH"] = crystal_path
+    end
+    env["SHARDS_CACHE_PATH"] = shards_cache if shards_cache
 
     ExecFrom.exec_from(
       directory: repository_path,
       command: crystal_binary_path,
       arguments: arguments,
-      environment: {
-        "COMPILE_DRIVER"    => source_file,
-        "DEBUG"             => debug ? "1" : "0",
-        "CRYSTAL_PATH"      => ENV["CRYSTAL_PATH"]?,
-        "SHARDS_CACHE_PATH" => shards_cache,
-      })
+      environment: env
+    )
   end
 
   def self.compiled_drivers(source_file : String? = nil, id : String? = nil, binary_directory : String = binary_dir)
@@ -172,10 +176,11 @@ module PlaceOS::Compiler
     # operations in a single lock. i.e. clone + shards install
     Git.repository_lock(repo_dir).write do
       # First check if the dependencies are satisfied
+      env = shards_cache.presence ? {"SHARDS_CACHE_PATH" => shards_cache} : {} of String => String?
       result = ExecFrom.exec_from(
         repo_dir,
         "shards", {"--no-color", "check", "--ignore-crystal-version", "--production"},
-        environment: {"SHARDS_CACHE_PATH" => shards_cache}
+        environment: env
       )
 
       output = result.output.to_s
@@ -191,7 +196,7 @@ module PlaceOS::Compiler
         result = ExecFrom.exec_from(
           repo_dir,
           "shards", {"--no-color", "install", "--ignore-crystal-version", "--production"},
-          environment: {"SHARDS_CACHE_PATH" => shards_cache}
+          environment: env
         )
         Result::Command.new(
           exit_code: result.status.exit_code,

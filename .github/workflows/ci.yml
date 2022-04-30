@@ -12,9 +12,7 @@ jobs:
       fail-fast: false
       matrix:
         crystal:
-          - 1.0.0
-          - 1.1.0
-          - 1.1.1
+          - latest
           - nightly
     steps:
       - uses: actions/checkout@v3
