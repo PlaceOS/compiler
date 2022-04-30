@@ -133,10 +133,12 @@ module PlaceOS::Compiler
 
     check_crystal!(crystal_binary_path)
     env = {
-      "COMPILE_DRIVER"    => source_file,
-      "DEBUG"             => debug ? "1" : "0",
+      "COMPILE_DRIVER" => source_file,
+      "DEBUG"          => debug ? "1" : "0",
     }
-    env["CRYSTAL_PATH"] = crystal_path if (crystal_path = ENV["CRYSTAL_PATH"]?.presence)
+    if crystal_path = ENV["CRYSTAL_PATH"]?.presence
+      env["CRYSTAL_PATH"] = crystal_path
+    end
     env["SHARDS_CACHE_PATH"] = shards_cache if shards_cache.presence
 
     ExecFrom.exec_from(
