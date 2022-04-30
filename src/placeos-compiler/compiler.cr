@@ -174,7 +174,7 @@ module PlaceOS::Compiler
     # operations in a single lock. i.e. clone + shards install
     Git.repository_lock(repo_dir).write do
       # First check if the dependencies are satisfied
-      env = shards_cache ? {"SHARDS_CACHE_PATH" => shards_cache} : {} of String => String
+      env = shards_cache.presence ? {"SHARDS_CACHE_PATH" => shards_cache} : {} of String => String
       result = ExecFrom.exec_from(
         repo_dir,
         "shards", {"--no-color", "check", "--ignore-crystal-version", "--production"},
