@@ -9,7 +9,10 @@ module PlaceOS::Compiler
 
   class_property repository_dir : String = File.expand_path("./repositories")
   class_property binary_dir : String = "#{Dir.current}/bin/drivers"
-  class_property crystal_binary_path : String = Process.find_executable("crystal") || abort("no `crystal` binary in the environment")
+
+  class_property crystal_binary_path : String do
+    Process.find_executable("crystal") || abort("no `crystal` binary in the environment")
+  end
 
   def self.is_built?(
     source_file : String,
