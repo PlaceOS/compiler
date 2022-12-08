@@ -43,7 +43,8 @@ module PlaceOS::Compiler
     release : Bool = false,
     multithreaded : Bool = false,
     shards_cache : String? = nil,
-    build_threads : Int32 = 1
+    build_threads : Int32 = 1,
+    branch : String = "master"
   ) : Result::Build
     # Ensure the bin directory exists
     Dir.mkdir_p binary_directory
@@ -86,7 +87,7 @@ module PlaceOS::Compiler
 
       # When developing you may not want to have to commit
       if git_checkout
-        Git.checkout_file(source_file, repository, working_directory, commit) { _compile(**build_args) }
+        Git.checkout_file(source_file, repository, working_directory, commit, branch) { _compile(**build_args) }
       else
         _compile(**build_args)
       end
