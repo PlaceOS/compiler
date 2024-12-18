@@ -7,10 +7,6 @@ dependencies:
   placeos-driver:
     github: placeos/driver
 
-  exec_from:
-    github: place-labs/exec_from
-    version: ~> 2.0
-
   rwlock:
     github: spider-gazelle/readers-writer
 

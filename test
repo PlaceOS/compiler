@@ -6,7 +6,7 @@ set -e
 function trap_ctrlc ()
 {
     echo "### cleaning up"
-    docker-compose down
+    docker compose down
     exit 2
 }
 
@@ -14,8 +14,8 @@ function trap_ctrlc ()
 # when signal 2 (SIGINT) is received
 trap "trap_ctrlc" 2
 
-docker-compose build
+docker compose build
 
-docker-compose run --rm test /app/scripts/entrypoint.sh "$@"
+docker compose run --rm test /app/scripts/entrypoint.sh "$@"
 
-docker-compose down
+docker compose down

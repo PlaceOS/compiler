@@ -1,4 +1,3 @@
-require "exec_from"
 require "log"
 
 require "./git"
@@ -129,7 +128,7 @@ module PlaceOS::Compiler
     multithreaded : Bool,
     shards_cache : String?,
     build_threads : Int32
-  ) : ExecFrom::Result
+  ) : RunFromResult
     arguments = ["build", "--static", "--no-color", "--error-trace", "--threads", build_threads.to_s, "-o", executable_path, build_script]
     arguments.insert(1, "--debug") if debug
     arguments.insert(1, "--release") if release
@@ -145,7 +144,7 @@ module PlaceOS::Compiler
     end
     env["SHARDS_CACHE_PATH"] = shards_cache if shards_cache
 
-    ExecFrom.exec_from(
+    RunFrom.run_from(
       directory: repository_path,
       command: crystal_binary_path,
       arguments: arguments,
@@ -181,7 +180,7 @@ module PlaceOS::Compiler
     Git.repository_lock(repo_dir).write do
       # First check if the dependencies are satisfied
       env = shards_cache.presence ? {"SHARDS_CACHE_PATH" => shards_cache} : {} of String => String?
-      result = ExecFrom.exec_from(
+      result = RunFrom.run_from(
         repo_dir,
         "shards", {"--no-color", "check", "--ignore-crystal-version", "--production"},
         environment: env
@@ -197,7 +196,7 @@ module PlaceOS::Compiler
         )
       else
         # Otherwise install shards
-        result = ExecFrom.exec_from(
+        result = RunFrom.run_from(
           repo_dir,
           "shards", {"--no-color", "install", "--ignore-crystal-version", "--production"},
           environment: env

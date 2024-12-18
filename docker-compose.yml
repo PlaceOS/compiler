@@ -15,7 +15,7 @@ services:
     build:
       context: ./
       args:
-        crystal_version: ${CRYSTAL_VERSION:-1.0.0}
+        crystal_version: ${CRYSTAL_VERSION:-latest}
     volumes:
       - ./spec:/app/spec
       - ./src:/app/src
@@ -23,10 +23,9 @@ services:
       - redis
     environment:
       # Service Hosts
-      << : *redis-client-env
+      << : [*redis-client-env,*deployment-env]
       # Environment
-      GITHUB_ACTION: ${GITHUB_ACTION-}
-      << : *deployment-env
+      GITHUB_ACTION: ${GITHUB_ACTION:-}
 
   redis:
     image: eqalpha/keydb

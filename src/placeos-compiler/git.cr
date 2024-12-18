@@ -1,10 +1,10 @@
-require "exec_from"
 require "file_utils"
 require "rwlock"
 require "uri"
 
 require "./error"
 require "./result"
+require "./run_from"
 
 module PlaceOS::Compiler
   module Git
@@ -359,7 +359,8 @@ module PlaceOS::Compiler
       args = args.to_a if args.is_a? Tuple
       git_args = git_args.to_a if git_args.is_a? Tuple
       args = git_args + args unless git_args.nil? || git_args.empty?
-      ExecFrom.exec_from(path, "git", args, environment: environment).tap do |result|
+
+      RunFrom.run_from(path, "git", args, environment: environment).tap do |result|
         raise Error::Git.from_result(args, result) if raises && !result.status.success?
       end
     end
