@@ -1,9 +1,9 @@
-require "exec_from"
+require "./run_from"
 
 module PlaceOS::Compiler
   class Error < Exception
     class Git < Error
-      def self.from_result(command, result : ExecFrom::Result)
+      def self.from_result(command, result : RunFrom::Result)
         new("`git #{command.join(' ')}` failed with #{result.output}")
       end
     end
@@ -16,7 +16,7 @@ module PlaceOS::Compiler
       super(message || "git exited with code: #{@exit_code}")
     end
 
-    def initialize(result : ExecFrom::Result)
+    def initialize(result : RunFrom::Result)
       @exit_code = result.status.exit_code
       super("command exited with #{@exit_code}: #{result.output}")
     end
