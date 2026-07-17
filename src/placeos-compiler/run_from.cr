@@ -13,7 +13,7 @@ module PlaceOS::Compiler::RunFrom
     output = IO::Memory.new
     process = nil
     status = Process::Status.new(1)
-    fiber = spawn(same_thread: true) do
+    fiber = spawn do
       process = Process.new(
         command,
         **rest,
