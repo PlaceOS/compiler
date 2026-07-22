@@ -13,7 +13,12 @@ module PlaceOS::Compiler::RunFrom
     output = IO::Memory.new
     process = nil
     status = Process::Status.new(1)
-    fiber = spawn do
+    # NOTE: a plain `spawn` with no manual scheduling. Since Crystal 1.21 the
+    # default runtime is the `Fiber::ExecutionContext::Parallel` scheduler,
+    # which manages spawned fibers itself. The previous `spawn(same_thread:
+    # true)` / `Fiber.yield` + `fiber.resume` dance raises/corrupts under that
+    # scheduler; the `select` below already yields to let this fiber run.
+    spawn do
       process = Process.new(
         command,
         **rest,
@@ -28,9 +33,6 @@ module PlaceOS::Compiler::RunFrom
       status = process.as(Process).wait
       channel.send(status) unless channel.closed?
     end
-
-    Fiber.yield
-    fiber.resume if fiber.running?
 
     select
     when status = channel.receive
